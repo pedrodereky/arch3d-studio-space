@@ -294,7 +294,7 @@ function SetupWizard() {
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
       </div>
     );
-  if (!user) return <Navigate to="/entrar" replace />;
+  if (!user) return <Navigate to="/entrar" search={{ redirect: "/app" }} replace />;
   if (!isAdmin) return <Navigate to="/app" replace />;
   if (setupCompleted === true) return <Navigate to="/app" replace />;
 

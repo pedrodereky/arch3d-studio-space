@@ -52,7 +52,7 @@ function SignupPage() {
     toast.success("Conta criada", {
       description: "Verifique seu e-mail para confirmar o acesso.",
     });
-    navigate({ to: "/entrar", replace: true });
+    navigate({ to: "/entrar", search: { redirect: "/app" }, replace: true });
   };
 
   return (
@@ -115,7 +115,7 @@ function SignupPage() {
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
             Já tem conta?{" "}
-            <Link to="/entrar" className="font-medium text-foreground hover:underline">
+            <Link to="/entrar" search={{ redirect: "/app" }} className="font-medium text-foreground hover:underline">
               Entrar
             </Link>
           </p>
