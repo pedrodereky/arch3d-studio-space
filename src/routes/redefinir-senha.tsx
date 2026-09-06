@@ -51,7 +51,7 @@ function ResetPage() {
       return;
     }
     toast.success("Senha redefinida");
-    navigate({ to: "/entrar", replace: true });
+    navigate({ to: "/entrar", search: { redirect: "/app" }, replace: true });
   };
 
   return (
@@ -123,7 +123,7 @@ function ResetPage() {
           )}
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
-            <Link to="/entrar" className="font-medium text-foreground hover:underline">
+            <Link to="/entrar" search={{ redirect: "/app" }} className="font-medium text-foreground hover:underline">
               Voltar para entrar
             </Link>
           </p>
