@@ -26,6 +26,7 @@ export function LandingNav() {
         <div className="flex items-center gap-2">
           <Link
             to="/entrar"
+            search={{ redirect: "/app" }}
             className={`${ctaPill} border border-border bg-background text-foreground hover:bg-secondary`}
           >
             Entrar
