@@ -1,0 +1,272 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ======================================================================
+   Arq3D Studio — built on the Viver de IA Design System
+   Canonical tokens live as `--via-*`. Shadcn semantic tokens
+   (`--background`, `--primary`, etc.) are mapped to brand primitives.
+   Full reference: /design-system/README.md and /design-system/colors_and_type.css
+   ====================================================================== */
+
+/* Avenir LT Std — local OTFs served from /public/fonts */
+@font-face {
+  font-family: "Avenir LT Std";
+  src: url("/fonts/AvenirLTStd-Light__1_.otf") format("opentype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Avenir LT Std";
+  src: url("/fonts/AvenirLTStd-LightOblique__1_.otf") format("opentype");
+  font-weight: 300;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Avenir LT Std";
+  src: url("/fonts/AvenirLTStd-Roman__1_.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Avenir LT Std";
+  src: url("/fonts/AvenirLTStd-Oblique__1_.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Avenir LT Std";
+  src: url("/fonts/AvenirLTStd-Heavy__1_.otf") format("opentype");
+  font-weight: 700 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme inline {
+  --font-sans: var(--via-font);
+  --font-mono: var(--via-font-mono);
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 20px;
+  --radius-2xl: 32px;
+  --radius-3xl: 48px;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+
+  --color-success: var(--via-success);
+  --color-success-foreground: var(--via-white);
+  --color-warning: var(--via-warning);
+  --color-warning-foreground: var(--via-white);
+  --color-danger: var(--via-danger);
+  --color-danger-foreground: var(--via-white);
+
+  --color-navy: var(--via-navy);
+  --color-brand: var(--via-blue);
+  --color-brand-light: var(--via-blue-light);
+
+  --color-chart-1: var(--via-util-1);
+  --color-chart-2: var(--via-util-2);
+  --color-chart-3: var(--via-util-3);
+  --color-chart-4: var(--via-util-4);
+  --color-chart-5: var(--via-util-5);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+:root {
+  /* ============== Viver de IA brand primitives ============== */
+  --via-navy: #02162a;
+  --via-navy-80: rgba(2, 22, 42, 0.8);
+  --via-navy-40: rgba(2, 22, 42, 0.4);
+  --via-navy-15: rgba(2, 22, 42, 0.15);
+  --via-navy-06: rgba(2, 22, 42, 0.06);
+  --via-blue: #0a4f95;
+  --via-blue-light: #e8f0fb;
+  --via-black: #000000;
+  --via-white: #ffffff;
+  --via-bg: #f9f9f9;
+  --via-bg-2: #f0f2f5;
+
+  --via-success: #1f8a5c;
+  --via-success-bg: #e6f4ed;
+  --via-warning: #b8740d;
+  --via-warning-bg: #fbf0df;
+  --via-danger: #b63a2f;
+  --via-danger-bg: #fbebe8;
+
+  --via-util-1: #0a4f95;
+  --via-util-2: #1f8a5c;
+  --via-util-3: #b8740d;
+  --via-util-4: #b63a2f;
+  --via-util-5: #5b3fa0;
+  --via-util-6: #0f7a8c;
+
+  --via-font: "Avenir LT Std", "Avenir Next", Avenir, "Helvetica Neue", sans-serif;
+  --via-font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+
+  --via-fw-light: 300;
+  --via-fw-regular: 400;
+  --via-fw-bold: 900;
+
+  --via-fs-display: 3rem;
+  --via-fs-h1: 2.25rem;
+  --via-fs-h2: 1.75rem;
+  --via-fs-h3: 1.25rem;
+  --via-fs-body: 1rem;
+  --via-fs-sm: 0.875rem;
+  --via-fs-xs: 0.75rem;
+  --via-fs-label: 0.625rem;
+
+  --via-ls-brand: 0.22em;
+  --via-ls-label: 0.12em;
+  --via-ls-wide: 0.06em;
+
+  --via-radius-sm: 4px;
+  --via-radius-md: 8px;
+  --via-radius-lg: 12px;
+  --via-radius-xl: 20px;
+  --via-radius-2xl: 32px;
+  --via-radius-pill: 9999px;
+
+  --via-shadow-card: 0 1px 3px rgba(2, 22, 42, 0.06), 0 4px 16px rgba(2, 22, 42, 0.06);
+  --via-shadow-raised: 0 8px 24px rgba(2, 22, 42, 0.12);
+  --via-shadow-focus: 0 0 0 3px rgba(10, 79, 149, 0.25);
+
+  --via-transition: 150ms ease;
+  --via-transition-slow: 300ms ease;
+
+  --via-container: 1200px;
+  --via-content: 760px;
+
+  /* ============== Shadcn semantic tokens (oklch) — mapped to brand ============== */
+  --radius: 0.75rem;
+
+  --background: oklch(0.984 0 0);            /* via-bg #F9F9F9 */
+  --foreground: oklch(0.235 0.034 254);      /* via text body #1C2B3A */
+
+  --card: oklch(1 0 0);                      /* white */
+  --card-foreground: oklch(0.235 0.034 254);
+
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.235 0.034 254);
+
+  --primary: oklch(0.176 0.04 257);          /* via-navy #02162A */
+  --primary-foreground: oklch(1 0 0);
+
+  --secondary: oklch(0.957 0.005 247);       /* via-bg-2 #F0F2F5 */
+  --secondary-foreground: oklch(0.176 0.04 257);
+
+  --muted: oklch(0.957 0.005 247);
+  --muted-foreground: oklch(0.55 0.025 248); /* #6B7A8D */
+
+  --accent: oklch(0.95 0.025 252);           /* via-blue-light #E8F0FB */
+  --accent-foreground: oklch(0.36 0.118 253);/* via-blue */
+
+  --destructive: oklch(0.51 0.155 27);       /* via-danger */
+  --destructive-foreground: oklch(1 0 0);
+
+  --border: oklch(0.176 0.04 257 / 0.15);    /* navy 15% */
+  --input: oklch(0.176 0.04 257 / 0.15);
+  --ring: oklch(0.36 0.118 253);             /* via-blue focus */
+
+  --sidebar: oklch(0.176 0.04 257);          /* navy */
+  --sidebar-foreground: oklch(1 0 0);
+  --sidebar-primary: oklch(0.36 0.118 253);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(1 0 0 / 0.06);
+  --sidebar-accent-foreground: oklch(1 0 0);
+  --sidebar-border: oklch(1 0 0 / 0.08);
+  --sidebar-ring: oklch(0.36 0.118 253);
+}
+
+.dark {
+  --background: oklch(0.176 0.04 257);
+  --foreground: oklch(0.984 0 0);
+  --card: oklch(0.21 0.04 257);
+  --card-foreground: oklch(0.984 0 0);
+  --popover: oklch(0.21 0.04 257);
+  --popover-foreground: oklch(0.984 0 0);
+  --primary: oklch(0.984 0 0);
+  --primary-foreground: oklch(0.176 0.04 257);
+  --secondary: oklch(0.27 0.04 257);
+  --secondary-foreground: oklch(0.984 0 0);
+  --muted: oklch(0.27 0.04 257);
+  --muted-foreground: oklch(0.72 0.025 248);
+  --accent: oklch(0.27 0.04 257);
+  --accent-foreground: oklch(0.984 0 0);
+  --destructive: oklch(0.6 0.18 27);
+  --destructive-foreground: oklch(0.984 0 0);
+  --border: oklch(1 0 0 / 0.1);
+  --input: oklch(1 0 0 / 0.15);
+  --ring: oklch(0.55 0.118 253);
+  --sidebar: oklch(0.176 0.04 257);
+  --sidebar-foreground: oklch(0.984 0 0);
+  --sidebar-primary: oklch(0.55 0.118 253);
+  --sidebar-primary-foreground: oklch(0.984 0 0);
+  --sidebar-accent: oklch(1 0 0 / 0.06);
+  --sidebar-accent-foreground: oklch(0.984 0 0);
+  --sidebar-border: oklch(1 0 0 / 0.1);
+  --sidebar-ring: oklch(0.55 0.118 253);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    font-family: var(--via-font);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--via-font);
+    font-weight: var(--via-fw-light);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: var(--via-fw-bold);
+    letter-spacing: -0.01em;
+  }
+}
+
+@keyframes stepper-shimmer {
+  0% { left: -33%; }
+  100% { left: 100%; }
+}

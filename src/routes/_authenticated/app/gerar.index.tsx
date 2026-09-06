@@ -1,0 +1,969 @@
+import {
+  Bolt,
+  Sparkles,
+  Wand2,
+  Type,
+  ArrowRight,
+  ImageUp,
+  X,
+  Loader2,
+  RefreshCw,
+} from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth-context";
+import { toast } from "sonner";
+import { RefinePromptDialog } from "@/components/gerar/RefinePromptDialog";
+
+type GerarSearch = { from?: string };
+
+export const Route = createFileRoute("/_authenticated/app/gerar/")({
+  validateSearch: (search: Record<string, unknown>): GerarSearch => ({
+    from: typeof search.from === "string" ? search.from : undefined,
+  }),
+  component: GerarPage,
+});
+
+type PipelineId = "direct" | "enriched" | "edit" | "text_to_3d";
+
+type Pipeline = {
+  id: PipelineId;
+  title: string;
+  desc: string;
+  icon: typeof Bolt;
+  recommended?: boolean;
+  estSeconds: number;
+};
+
+const PIPELINES: Pipeline[] = [
+  {
+    id: "direct",
+    title: "Direto",
+    desc: "Foto pronta vira 3D na hora. Use quando o objeto já está com fundo limpo.",
+    icon: Bolt,
+    estSeconds: 45,
+  },
+  {
+    id: "enriched",
+    title: "Enriquecido",
+    desc: "IA limpa fundo e gera vistas multi-view antes do 3D. Resultado superior.",
+    icon: Sparkles,
+    recommended: true,
+    estSeconds: 90,
+  },
+  {
+    id: "edit",
+    title: "Edita antes",
+    desc: "Modifica cor, material ou tamanho antes de virar 3D.",
+    icon: Wand2,
+    estSeconds: 120,
+  },
+  {
+    id: "text_to_3d",
+    title: "Texto para 3D",
+    desc: "Descreva o objeto e a IA cria o modelo 3D do zero. Sem precisar de imagem.",
+    icon: Type,
+    estSeconds: 150,
+  },
+];
+
+const TEXT_PROMPT_SUGGESTIONS = [
+  "Poltrona art déco em veludo verde com detalhes em latão polido, estilo dos anos 1920, render fotorrealista, iluminação de estúdio",
+  "Mesa lateral redonda em mármore travertino com base em aço escovado, design escandinavo minimalista",
+  "Luminária pendente orgânica em vidro fosco soprado, formato de gota, acabamento dourado fosco no topo",
+  "Estante modular em carvalho natural com gavetas embutidas, estilo japandi, proporções equilibradas",
+];
+
+const EDIT_SUGGESTIONS = [
+  "Mudar para dourado",
+  "Aumentar 30%",
+  "Estilo art déco",
+  "Acabamento fosco",
+  "Cor preta",
+  "Material em mármore",
+];
+
+function GerarPage() {
+  const { user, refreshProfile } = useAuth();
+  const navigate = useNavigate();
+  const { from } = Route.useSearch();
+
+  const [pipelineId, setPipelineId] = useState<PipelineId>("enriched");
+  const [engine, setEngine] = useState<"hunyuan_2_1" | "hunyuan_3_1">("hunyuan_2_1");
+  const [primary, setPrimary] = useState<File | null>(null);
+  const [instruction, setInstruction] = useState("");
+  const [editPrompt, setEditPrompt] = useState("");
+  const [textPrompt, setTextPrompt] = useState("");
+
+  const [reusedFrom, setReusedFrom] = useState<{
+    id: string;
+    sourceImages: string[];
+    contextImageUrl: string | null;
+    pipelineLabel: string;
+  } | null>(null);
+
+  const [submitting, setSubmitting] = useState(false);
+  const [progressGenId, setProgressGenId] = useState<string | null>(null);
+  const [refineOpen, setRefineOpen] = useState(false);
+
+  const pipeline = PIPELINES.find((p) => p.id === pipelineId)!;
+  const isTextPipeline = pipelineId === "text_to_3d";
+  const effectiveEngine: "hunyuan_2_1" | "hunyuan_3_1" = isTextPipeline
+    ? "hunyuan_3_1"
+    : engine;
+
+  const hasReusedSource = (reusedFrom?.sourceImages.length ?? 0) > 0;
+  const primarySatisfied = !!primary || hasReusedSource;
+
+  const canGenerate = isTextPipeline
+    ? textPrompt.trim().length >= 10
+    : primarySatisfied &&
+      (pipelineId !== "edit" || editPrompt.trim().length > 0);
+
+  // Carrega geração de origem quando ?from=<id>
+  const loadedFromRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!user || !from || loadedFromRef.current === from) return;
+    loadedFromRef.current = from;
+    void (async () => {
+      const { data, error } = await supabase
+        .from("generations")
+        .select(
+          "id,pipeline_type,engine,source_images,context_image_url,prompt,edit_instruction",
+        )
+        .eq("id", from)
+        .maybeSingle();
+      if (error || !data) {
+        toast.error("Não foi possível carregar a geração de origem");
+        navigate({ to: "/app/gerar", search: {} } as never);
+        return;
+      }
+      const pt = data.pipeline_type as string;
+      // Pipelines descontinuados: cai para o recomendado
+      if (pt !== "direct" && pt !== "enriched" && pt !== "edit" && pt !== "text_to_3d") {
+        toast.info("Este modo foi descontinuado — usando Enriquecido");
+        setPipelineId("enriched");
+      } else {
+        setPipelineId(pt as PipelineId);
+      }
+      if (data.engine === "hunyuan_2_1" || data.engine === "hunyuan_3_1") {
+        setEngine(data.engine);
+      }
+      const srcs = Array.isArray(data.source_images)
+        ? (data.source_images as unknown[]).filter(
+            (x): x is string => typeof x === "string",
+          )
+        : [];
+      setReusedFrom({
+        id: data.id,
+        sourceImages: srcs,
+        contextImageUrl: (data.context_image_url as string | null) ?? null,
+        pipelineLabel:
+          PIPELINES.find((p) => p.id === pt)?.title ?? pt,
+      });
+      const promptStr = (data.prompt as string | null) ?? "";
+      if (pt === "text_to_3d") {
+        setTextPrompt(promptStr);
+      } else if (pt === "edit") {
+        setEditPrompt((data.edit_instruction as string | null) ?? "");
+        setInstruction(promptStr);
+      } else {
+        setInstruction(promptStr);
+      }
+      toast.success("Geração carregada — ajuste e gere de novo");
+    })();
+  }, [user, from, navigate]);
+
+  const clearReused = () => {
+    setReusedFrom(null);
+    loadedFromRef.current = null;
+    setPrimary(null);
+    setInstruction("");
+    setEditPrompt("");
+    setTextPrompt("");
+    navigate({ to: "/app/gerar", search: {} } as never);
+  };
+
+  useEffect(() => {
+    setEditPrompt("");
+    if (reusedFrom && reusedFrom.pipelineLabel !== pipeline.title) {
+      setReusedFrom(null);
+      loadedFromRef.current = null;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pipelineId]);
+
+
+  const uploadToInputs = async (file: File, genId: string, name: string) => {
+    if (!user) throw new Error("Sem usuário");
+    const ext = file.name.split(".").pop() ?? "bin";
+    const path = `${user.id}/${genId}/${name}.${ext}`;
+    const { error } = await supabase.storage
+      .from("inputs")
+      .upload(path, file, { upsert: true, contentType: file.type });
+    if (error) throw error;
+    const { data: signed } = await supabase.storage
+      .from("inputs")
+      .createSignedUrl(path, 60 * 60 * 6);
+    return signed?.signedUrl ?? path;
+  };
+
+  const handleGenerate = async (overridePrompt?: string) => {
+    if (!user || submitting) return;
+    const effectivePrompt = isTextPipeline
+      ? (overridePrompt ?? textPrompt).trim()
+      : instruction;
+    if (isTextPipeline ? effectivePrompt.length < 10 : !canGenerate) return;
+    setSubmitting(true);
+    try {
+      const { data: gen, error: insErr } = await supabase
+        .from("generations")
+        .insert(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          {
+            user_id: user.id,
+            pipeline_type: pipelineId,
+            engine: effectiveEngine,
+            status: "queued",
+            source_images: [],
+            prompt: isTextPipeline ? effectivePrompt : instruction || null,
+            edit_instruction: pipelineId === "edit" ? editPrompt : null,
+          } as any,
+        )
+        .select("id")
+        .single();
+      if (insErr || !gen) throw insErr ?? new Error("Falha ao criar geração");
+
+      if (!isTextPipeline) {
+        let sources: string[] = [];
+
+        if (primary) {
+          const primaryUrl = await uploadToInputs(primary, gen.id, "source");
+          sources = [primaryUrl];
+        } else if (hasReusedSource && reusedFrom) {
+          sources = reusedFrom.sourceImages;
+        }
+
+        await supabase
+          .from("generations")
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .update({
+            source_images: sources,
+            prompt: instruction,
+          } as any)
+          .eq("id", gen.id);
+      }
+
+      const { error: fnErr } = await supabase.functions.invoke("orchestrate-generation", {
+        body: { generationId: gen.id },
+      });
+      if (fnErr) throw fnErr;
+
+      setProgressGenId(gen.id);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Falha ao iniciar geração";
+      toast.error("Erro ao gerar", { description: msg });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!progressGenId) return;
+    const channel = supabase
+      .channel(`gen-${progressGenId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "generations",
+          filter: `id=eq.${progressGenId}`,
+        },
+        async (payload) => {
+          const row = payload.new as { status: string };
+          if (row.status === "succeeded") {
+            await refreshProfile?.();
+            navigate({
+              to: "/app/biblioteca",
+              search: { destacar: progressGenId },
+            } as never);
+          } else if (row.status === "failed" || row.status === "cancelled") {
+            toast.error("Geração falhou");
+            setProgressGenId(null);
+          }
+        },
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [progressGenId, navigate, refreshProfile]);
+
+  return (
+    <div className="mx-auto max-w-6xl">
+      <Header />
+
+      {reusedFrom && (
+        <div className="mt-6 flex items-start gap-3 rounded-md border border-accent/30 bg-accent/5 px-4 py-3">
+          <RefreshCw className="mt-0.5 h-4 w-4 shrink-0 text-accent" strokeWidth={1.5} />
+          <div className="flex-1">
+            <p className="text-sm font-bold text-foreground">
+              Regenerando a partir de uma geração anterior
+            </p>
+            <p className="mt-0.5 text-[12px] font-light text-muted-foreground">
+              Pipeline {reusedFrom.pipelineLabel} · {hasReusedSource
+                ? "imagem de origem reaproveitada"
+                : "sem imagem de origem"}. Ajuste o prompt e gere novamente — você pode trocar a imagem se quiser.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={clearReused}
+            className="shrink-0 rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            aria-label="Descartar"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
+      <PipelineGrid value={pipelineId} onChange={setPipelineId} />
+
+      <div className="mt-12">
+        <Label>Detalhes da geração</Label>
+        <div className="mt-4">
+          {(pipelineId === "direct" || pipelineId === "enriched") && (
+            <BasicForm
+              file={primary}
+              onFile={setPrimary}
+              instruction={instruction}
+              onInstruction={setInstruction}
+            />
+          )}
+          {pipelineId === "edit" && (
+            <EditForm
+              file={primary}
+              onFile={setPrimary}
+              prompt={editPrompt}
+              onPrompt={setEditPrompt}
+            />
+          )}
+          {isTextPipeline && (
+            <TextTo3DForm prompt={textPrompt} onPrompt={setTextPrompt} />
+          )}
+        </div>
+
+        {!isTextPipeline && (
+          <div className="mt-10">
+            <Label>Motor de geração 3D</Label>
+            <div className="mt-4 grid gap-4 sm:grid-cols-1">
+              <EngineCard
+                selected={engine === "hunyuan_2_1"}
+                onClick={() => setEngine("hunyuan_2_1")}
+                title="Hunyuan 2.1"
+                tag="Padrão"
+                desc="Multi-view com controle por ângulo. Recomendado para todas as pipelines com imagem."
+                meta="~45-90s · ~$0.05"
+              />
+            </div>
+          </div>
+        )}
+
+        <div className="mt-8 flex flex-col gap-4 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm font-light text-muted-foreground">
+            Tempo estimado:{" "}
+            <span className="font-bold text-foreground">~{pipeline.estSeconds}s</span>
+          </p>
+          <div className="flex items-center gap-3">
+            {isTextPipeline && (
+              <button
+                type="button"
+                onClick={() => setRefineOpen(true)}
+                disabled={textPrompt.trim().length < 3 || submitting}
+                className="inline-flex h-12 items-center gap-2 rounded-full border border-border px-5 text-[11px] font-black uppercase tracking-[0.12em] text-foreground transition-colors hover:border-primary/40 hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <Sparkles className="h-4 w-4" strokeWidth={1.75} />
+                Refinar com IA
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => void handleGenerate()}
+              disabled={!canGenerate || submitting}
+              className="inline-flex h-12 items-center gap-2 rounded-full bg-primary px-7 text-[12px] font-black uppercase tracking-[0.12em] text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {submitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  Gerar 3D
+                  <ArrowRight className="h-4 w-4" />
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {isTextPipeline && (
+        <RefinePromptDialog
+          open={refineOpen}
+          onOpenChange={setRefineOpen}
+          initialPrompt={textPrompt}
+          onConfirm={(finalPrompt) => {
+            setTextPrompt(finalPrompt);
+            void handleGenerate(finalPrompt);
+          }}
+        />
+      )}
+
+      {progressGenId && (
+        <ProgressOverlay
+          pipeline={pipeline}
+          onBackground={() => {
+            setProgressGenId(null);
+            navigate({ to: "/app" });
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ============== HEADER ============== */
+
+function Header() {
+  return (
+    <div>
+      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+        Gerar
+      </p>
+      <h1 className="mt-2 text-4xl font-black tracking-tight text-foreground">
+        Geração de objetos em 3D
+      </h1>
+      <p className="mt-3 max-w-xl font-light text-muted-foreground">
+        Gere objetos em 3D a partir de imagem ou texto. Escolha um pipeline e a gente cuida do resto.
+      </p>
+
+      <div className="mt-6 grid gap-3 sm:grid-cols-3">
+        <a
+          href="/app/gerar/redecorar"
+          className="flex items-center justify-between gap-4 rounded-2xl border border-accent/30 bg-accent/5 px-5 py-4 transition-colors hover:border-accent/60 hover:bg-accent/10"
+        >
+          <div className="flex items-center gap-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
+              <Wand2 className="h-4 w-4" strokeWidth={1.75} />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-foreground">Redecorar ambiente</p>
+              <p className="mt-0.5 text-[12px] font-light text-muted-foreground">
+                Foto real → 4 propostas fotorrealistas em 20s.
+              </p>
+            </div>
+          </div>
+          <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+        </a>
+
+        <a
+          href="/app/gerar/briefing"
+          className="flex items-center justify-between gap-4 rounded-2xl border border-accent/30 bg-accent/5 px-5 py-4 transition-colors hover:border-accent/60 hover:bg-accent/10"
+        >
+          <div className="flex items-center gap-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
+              <Type className="h-4 w-4" strokeWidth={1.75} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-bold text-foreground">Briefing → planta 2D</p>
+                <span className="rounded-[4px] bg-accent/10 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-[0.12em] text-accent">
+                  Novo
+                </span>
+              </div>
+              <p className="mt-0.5 text-[12px] font-light text-muted-foreground">
+                Texto do briefing → 4 plantas baixas 2D + análise IA.
+              </p>
+            </div>
+          </div>
+          <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+        </a>
+
+        <a
+          href="/app/gerar/analise"
+          className="flex items-center justify-between gap-4 rounded-2xl border border-accent/30 bg-accent/5 px-5 py-4 transition-colors hover:border-accent/60 hover:bg-accent/10"
+        >
+          <div className="flex items-center gap-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
+              <ImageUp className="h-4 w-4" strokeWidth={1.75} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-bold text-foreground">Analisar planta existente</p>
+                <span className="rounded-[4px] bg-accent/10 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-[0.12em] text-accent">
+                  Novo
+                </span>
+              </div>
+              <p className="mt-0.5 text-[12px] font-light text-muted-foreground">
+                Imagem ou PDF → cômodos, áreas e NBR 9050 em ~20s.
+              </p>
+            </div>
+          </div>
+          <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+        </a>
+      </div>
+    </div>
+  );
+}
+
+/* ============== PIPELINE GRID ============== */
+
+function PipelineGrid({
+  value,
+  onChange,
+}: {
+  value: PipelineId;
+  onChange: (v: PipelineId) => void;
+}) {
+  return (
+    <div className="mt-12">
+      <Label>Escolha um pipeline</Label>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
+        {PIPELINES.map((p) => (
+          <PipelineCard
+            key={p.id}
+            pipeline={p}
+            selected={value === p.id}
+            onClick={() => onChange(p.id)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PipelineCard({
+  pipeline,
+  selected,
+  onClick,
+}: {
+  pipeline: Pipeline;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  const Icon = pipeline.icon;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={
+        "relative flex h-full flex-col rounded-2xl border p-5 text-left transition-all " +
+        (selected
+          ? "border-accent bg-card shadow-lg"
+          : "border-border/60 bg-background hover:border-accent/40 hover:bg-card")
+      }
+    >
+      {pipeline.recommended && (
+        <span className="absolute right-3 top-3 rounded-[4px] bg-emerald-600/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700">
+          Recomendado
+        </span>
+      )}
+      <div
+        className={
+          "flex h-[42px] w-[42px] items-center justify-center rounded-md " +
+          (selected ? "bg-accent text-accent-foreground" : "bg-primary/[0.06] text-primary")
+        }
+      >
+        <Icon className="h-[22px] w-[22px]" strokeWidth={1.75} />
+      </div>
+      <h3 className="mt-4 text-base font-black tracking-tight text-foreground">
+        {pipeline.title}
+      </h3>
+      <p className="mt-1.5 text-xs font-light leading-relaxed text-muted-foreground">
+        {pipeline.desc}
+      </p>
+      <div className="mt-auto pt-4">
+        <span className="inline-flex items-center gap-1.5 rounded-[4px] bg-accent/10 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-accent">
+          ~{pipeline.estSeconds}s
+        </span>
+      </div>
+    </button>
+  );
+}
+
+/* ============== FORMS ============== */
+
+function EngineCard({
+  selected,
+  onClick,
+  title,
+  tag,
+  desc,
+  meta,
+}: {
+  selected: boolean;
+  onClick: () => void;
+  title: string;
+  tag: string;
+  desc: string;
+  meta: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={
+        "relative flex h-full flex-col rounded-2xl border p-5 text-left transition-all " +
+        (selected
+          ? "border-accent bg-card shadow-lg"
+          : "border-border/60 bg-background hover:border-accent/40 hover:bg-card")
+      }
+    >
+      <div className="flex items-center justify-between">
+        <span className="text-base font-black tracking-tight text-foreground">{title}</span>
+        <span className="rounded-[4px] bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+          {tag}
+        </span>
+      </div>
+      <p className="mt-2 text-sm font-light text-muted-foreground">{desc}</p>
+      <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.12em] text-foreground/70">
+        {meta}
+      </p>
+    </button>
+  );
+}
+
+function Label({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+      {children}
+    </p>
+  );
+}
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <label className="block text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+      {children}
+    </label>
+  );
+}
+
+function Dropzone({
+  file,
+  onFile,
+  accept = "image/png,image/jpeg",
+  hint = "Arraste uma imagem aqui ou clique para selecionar. PNG ou JPG, máximo 10MB.",
+}: {
+  file: File | null;
+  onFile: (f: File | null) => void;
+  accept?: string;
+  hint?: string;
+}) {
+  const handle = (e: ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    if (f.size > 10 * 1024 * 1024) {
+      toast.error("Arquivo maior que 10MB");
+      return;
+    }
+    onFile(f);
+  };
+  if (file) {
+    const url = URL.createObjectURL(file);
+    const isPdf = file.type === "application/pdf";
+    return (
+      <div className="flex items-center gap-4 rounded-2xl border border-border bg-card p-4">
+        <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
+          {isPdf ? (
+            <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+              PDF
+            </span>
+          ) : (
+            <img src={url} alt={file.name} className="h-full w-full object-cover" />
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-foreground">{file.name}</p>
+          <p className="text-xs font-light text-muted-foreground">
+            {(file.size / 1024 / 1024).toFixed(2)} MB
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => onFile(null)}
+          className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+          aria-label="Remover"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+    );
+  }
+  return (
+    <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-border bg-card px-6 py-12 text-center transition-colors hover:bg-muted/40">
+      <ImageUp className="h-10 w-10 text-muted-foreground" strokeWidth={1.5} />
+      <span className="max-w-sm text-sm font-light text-muted-foreground">{hint}</span>
+      <input type="file" accept={accept} onChange={handle} className="hidden" />
+    </label>
+  );
+}
+
+function BasicForm({
+  file,
+  onFile,
+  instruction,
+  onInstruction,
+}: {
+  file: File | null;
+  onFile: (f: File | null) => void;
+  instruction: string;
+  onInstruction: (v: string) => void;
+}) {
+  return (
+    <div className="space-y-6">
+      <div>
+        <FieldLabel>Imagem de referência</FieldLabel>
+        <div className="mt-2">
+          <Dropzone file={file} onFile={onFile} />
+        </div>
+      </div>
+      <div>
+        <FieldLabel>Instrução adicional (opcional)</FieldLabel>
+        <textarea
+          rows={3}
+          value={instruction}
+          onChange={(e) => onInstruction(e.target.value)}
+          placeholder="Ex: luminária pendente dourada estilo art déco"
+          className="mt-2 block w-full resize-none rounded-md border border-border bg-background px-4 py-3 text-sm text-foreground focus:border-primary focus:outline-none"
+        />
+      </div>
+    </div>
+  );
+}
+
+function TextTo3DForm({
+  prompt,
+  onPrompt,
+}: {
+  prompt: string;
+  onPrompt: (v: string) => void;
+}) {
+  const MIN = 10;
+  const MAX = 1024;
+  const trimmedLen = prompt.trim().length;
+  const tooShort = trimmedLen > 0 && trimmedLen < MIN;
+  const tooLong = prompt.length > MAX;
+  const remaining = MAX - prompt.length;
+  const counterTone = tooLong
+    ? "text-destructive"
+    : remaining <= 80
+    ? "text-accent"
+    : "text-muted-foreground";
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <FieldLabel>Descrição do objeto</FieldLabel>
+        <textarea
+          rows={6}
+          value={prompt}
+          onChange={(e) => onPrompt(e.target.value.slice(0, MAX))}
+          placeholder="Ex: Poltrona elegante esculpida no formato de um abacate, casca verde aveludada, almofada interna dourada polida, detalhes ornamentais em latão, render fotorrealista, iluminação dramática de estúdio, fundo neutro"
+          aria-invalid={tooShort || tooLong}
+          className={`mt-2 block w-full resize-y rounded-md border bg-background px-4 py-3 text-sm text-foreground focus:outline-none ${
+            tooShort || tooLong
+              ? "border-destructive focus:border-destructive"
+              : "border-border focus:border-primary"
+          }`}
+        />
+        <div className="mt-2 flex items-start justify-between gap-4">
+          <p className="text-[11px] font-light text-muted-foreground">
+            {tooShort
+              ? `Descreva com pelo menos ${MIN} caracteres — faltam ${MIN - trimmedLen}.`
+              : trimmedLen === 0
+              ? "Descreva forma, material, cor, estilo e iluminação. Quanto mais detalhe, melhor o resultado."
+              : "Quanto mais detalhe sobre forma, material, cor e iluminação, melhor o resultado."}
+          </p>
+          <span className={`shrink-0 text-[11px] font-light tabular-nums ${counterTone}`}>
+            {prompt.length}/{MAX}
+          </span>
+        </div>
+      </div>
+      <div>
+        <FieldLabel>Sugestões para começar</FieldLabel>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {TEXT_PROMPT_SUGGESTIONS.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => onPrompt(s.slice(0, MAX))}
+              className="rounded-[4px] border border-border bg-card px-3 py-2 text-left text-xs font-light text-foreground transition-colors hover:border-accent hover:bg-accent/5"
+            >
+              {s.length > 70 ? `${s.slice(0, 70)}…` : s}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EditForm({
+  file,
+  onFile,
+  prompt,
+  onPrompt,
+}: {
+  file: File | null;
+  onFile: (f: File | null) => void;
+  prompt: string;
+  onPrompt: (v: string) => void;
+}) {
+  const addChip = (s: string) => {
+    onPrompt(prompt ? `${prompt}, ${s.toLowerCase()}` : s);
+  };
+  return (
+    <div className="space-y-6">
+      <div>
+        <FieldLabel>Imagem de referência</FieldLabel>
+        <div className="mt-2">
+          <Dropzone file={file} onFile={onFile} />
+        </div>
+      </div>
+      <div>
+        <FieldLabel>Como modificar antes de virar 3D</FieldLabel>
+        <textarea
+          rows={3}
+          value={prompt}
+          onChange={(e) => onPrompt(e.target.value)}
+          placeholder="Descreva as alterações desejadas"
+          className="mt-2 block w-full resize-none rounded-md border border-border bg-background px-4 py-3 text-sm text-foreground focus:border-primary focus:outline-none"
+        />
+        <div className="mt-3 flex flex-wrap gap-2">
+          {EDIT_SUGGESTIONS.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => addChip(s)}
+              className="rounded-[4px] bg-accent/10 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.08em] text-accent transition-colors hover:bg-accent/15"
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============== PROGRESS OVERLAY ============== */
+
+const PROGRESS_STEPS = [
+  { label: "Analisando imagem...", sub: "Validando referência e preparando o pipeline.", ms: 1500 },
+  { label: "Limpando fundo com IA...", sub: "Isolando o objeto da cena.", ms: 8000 },
+  { label: "Gerando vistas multi-view...", sub: "Criando ângulos para reconstrução.", ms: 18000 },
+  { label: "Criando malha 3D...", sub: "Reconstruindo geometria a partir das vistas.", ms: 38000 },
+  { label: "Aplicando texturas...", sub: "Pintando cores e materiais.", ms: 18000 },
+  {
+    label: "Compondo render contextual...",
+    sub: "Posicionando o objeto na cena com lighting.",
+    ms: 15000,
+  },
+];
+
+function ProgressOverlay({
+  pipeline,
+  onBackground,
+}: {
+  pipeline: Pipeline;
+  onBackground: () => void;
+}) {
+  const steps = useMemo(() => {
+    if (pipeline.id === "direct")
+      return [PROGRESS_STEPS[0], PROGRESS_STEPS[3], PROGRESS_STEPS[4]];
+    
+    return [
+      PROGRESS_STEPS[0],
+      PROGRESS_STEPS[1],
+      PROGRESS_STEPS[2],
+      PROGRESS_STEPS[3],
+      PROGRESS_STEPS[4],
+    ];
+  }, [pipeline.id]);
+
+  const totalMs = useMemo(() => steps.reduce((acc, s) => acc + s.ms, 0), [steps]);
+  const startRef = useRef<number>(Date.now());
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    startRef.current = Date.now();
+    const t = setInterval(() => setElapsed(Date.now() - startRef.current), 250);
+    return () => clearInterval(t);
+  }, [steps]);
+
+  // Step atual baseado em tempo acumulado
+  let acc = 0;
+  let idx = steps.length - 1;
+  for (let i = 0; i < steps.length; i++) {
+    acc += steps[i].ms;
+    if (elapsed < acc) {
+      idx = i;
+      break;
+    }
+  }
+  const overtime = elapsed >= totalMs;
+  const pct = Math.min(elapsed / totalMs, 0.97);
+  const remainingS = Math.max(0, Math.round((totalMs - elapsed) / 1000));
+  const current = steps[idx];
+
+  const formatEta = (s: number) => {
+    if (s >= 60) {
+      const m = Math.floor(s / 60);
+      const r = s % 60;
+      return r ? `~${m}min ${r}s restantes` : `~${m}min restantes`;
+    }
+    return `~${s}s restantes`;
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background px-6">
+      <div
+        className="pointer-events-none absolute inset-0 opacity-60"
+        style={{
+          background:
+            "radial-gradient(circle at 50% 40%, color-mix(in oklab, hsl(var(--accent)) 18%, transparent), transparent 60%)",
+        }}
+      />
+      <div className="relative flex w-full max-w-md flex-col items-center text-center">
+        <Loader2 className="h-16 w-16 animate-spin text-accent" strokeWidth={1.5} />
+        <h2 className="mt-8 text-2xl font-black tracking-tight text-foreground">
+          {overtime ? "Finalizando..." : current.label}
+        </h2>
+        <p className="mt-2 text-sm font-light text-muted-foreground">
+          {overtime
+            ? "Quase lá. Algumas gerações passam do tempo estimado quando há fila."
+            : current.sub}
+        </p>
+
+        <div className="mt-8 h-1.5 w-72 overflow-hidden rounded-full bg-muted">
+          <div
+            className="h-full rounded-full bg-accent transition-[width] duration-300 ease-out"
+            style={{ width: `${pct * 100}%` }}
+          />
+        </div>
+        <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+          Passo {Math.min(idx + 1, steps.length)} de {steps.length}
+          {!overtime && remainingS > 0 ? ` · ${formatEta(remainingS)}` : ""}
+        </p>
+
+        <button
+          type="button"
+          onClick={onBackground}
+          className="mt-8 inline-flex h-9 items-center rounded-full border border-border bg-background px-4 text-[10px] font-black uppercase tracking-[0.12em] text-foreground hover:bg-muted"
+        >
+          Continuar em segundo plano
+        </button>
+      </div>
+    </div>
+  );
+}

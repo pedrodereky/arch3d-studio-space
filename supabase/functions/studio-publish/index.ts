@@ -1,0 +1,210 @@
+// Studio: a partir de um nó concluído, dispara uma ação
+// (salvar na biblioteca, gerar 3D da cena, gerar vídeo POV ou
+//  gerar 3D individual de móveis selecionados).
+//
+// POST body: {
+//   runId, nodeId,
+//   action: "save_only" | "scene_to_3d" | "render_to_video" | "furniture_individual",
+//   videoParams?: { cameraMode, prompt },
+//   furniture?: Array<{ prompt: string; type: string; isolation_prompt: string }>
+// }
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+};
+
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+
+const admin = createClient(SUPABASE_URL, SERVICE_ROLE, {
+  auth: { persistSession: false },
+});
+
+type Body = {
+  runId: string;
+  nodeId: string;
+  action: "save_only" | "scene_to_3d" | "render_to_video" | "furniture_individual";
+  videoParams?: { cameraMode?: string; prompt?: string };
+  furniture?: Array<{ prompt: string; type: string; isolation_prompt: string }>;
+};
+
+async function getUserId(req: Request): Promise<string> {
+  const auth = req.headers.get("Authorization") ?? "";
+  if (!auth.startsWith("Bearer ")) throw new Error("não autenticado");
+  const userClient = createClient(SUPABASE_URL, ANON_KEY, {
+    global: { headers: { Authorization: auth } },
+    auth: { persistSession: false },
+  });
+  const { data, error } = await userClient.auth.getUser();
+  if (error || !data.user) throw new Error("sessão inválida");
+  return data.user.id;
+}
+
+async function freshSignedUrl(path: string, ttlSec = 60 * 60 * 24 * 7): Promise<string> {
+  const { data, error } = await admin.storage
+    .from("outputs")
+    .createSignedUrl(path, ttlSec);
+  if (error || !data?.signedUrl) throw new Error(`assinar url: ${error?.message ?? "?"}`);
+  return data.signedUrl;
+}
+
+async function insertGeneration(row: Record<string, unknown>): Promise<string> {
+  const { data, error } = await admin
+    .from("generations")
+    .insert(row)
+    .select("id")
+    .single();
+  if (error || !data) throw new Error(`insert generation: ${error?.message ?? "?"}`);
+  return data.id as string;
+}
+
+async function invokeOrchestrate(generationId: string) {
+  const r = await fetch(`${SUPABASE_URL}/functions/v1/orchestrate-generation`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${SERVICE_ROLE}`,
+    },
+    body: JSON.stringify({ generationId }),
+  });
+  // não bloqueia: orchestrate é longo. mas verifica erro de boot.
+  if (!r.ok && r.status >= 500) {
+    const t = await r.text();
+    console.error("orchestrate kickoff erro", r.status, t.slice(0, 300));
+  }
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  try {
+    const userId = await getUserId(req);
+    const body = (await req.json()) as Body;
+    if (!body.runId || !body.nodeId || !body.action) {
+      throw new Error("faltam campos: runId, nodeId, action");
+    }
+
+    const { data: run, error: runErr } = await admin
+      .from("studio_runs")
+      .select("id, user_id, node_results, graph")
+      .eq("id", body.runId)
+      .single();
+    if (runErr || !run) throw new Error(`run não encontrada: ${runErr?.message ?? "?"}`);
+    if (run.user_id !== userId) throw new Error("forbidden");
+
+    const results = (run.node_results as Record<string, { url?: string; path?: string }>) ?? {};
+    const node = results[body.nodeId];
+    if (!node?.path && !node?.url) throw new Error("nó sem resultado para publicar");
+
+    const storagePath = node.path ?? null;
+    const freshUrl = storagePath ? await freshSignedUrl(storagePath) : node.url!;
+
+    // Recupera prompt do grafo do nó (best effort)
+    const graph = run.graph as { nodes?: Array<{ id: string; data?: { prompt?: string } }> } | null;
+    const nodeData = graph?.nodes?.find((n) => n.id === body.nodeId)?.data;
+    const inheritedPrompt = nodeData?.prompt ?? null;
+
+    const studioOrigin = { run_id: body.runId, node_id: body.nodeId };
+
+    if (body.action === "save_only") {
+      const id = await insertGeneration({
+        user_id: userId,
+        pipeline_type: "edit",
+        engine: "studio_save",
+        status: "succeeded",
+        source_images: storagePath ? [storagePath] : [freshUrl],
+        prompt: inheritedPrompt,
+        final_render_url: freshUrl,
+        thumbnail_url: freshUrl,
+        progress_percent: 100,
+        completed_at: new Date().toISOString(),
+        metadata: { studio_origin: studioOrigin, kind: "saved_image" },
+      });
+      return new Response(JSON.stringify({ ok: true, generationIds: [id] }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (body.action === "scene_to_3d") {
+      const id = await insertGeneration({
+        user_id: userId,
+        pipeline_type: "scene_to_3d",
+        engine: "hunyuan_2_1",
+        status: "queued",
+        source_images: [freshUrl],
+        context_image_url: freshUrl,
+        prompt: inheritedPrompt,
+        metadata: { studio_origin: studioOrigin },
+      });
+      await invokeOrchestrate(id);
+      return new Response(JSON.stringify({ ok: true, generationIds: [id] }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (body.action === "render_to_video") {
+      const id = await insertGeneration({
+        user_id: userId,
+        pipeline_type: "render_to_video",
+        engine: "happyhorse_1_0",
+        status: "queued",
+        source_images: [freshUrl],
+        prompt: body.videoParams?.prompt?.trim() || inheritedPrompt,
+        metadata: {
+          studio_origin: studioOrigin,
+          duration: 15,
+          resolution: "1080p",
+          aspect_ratio: "16:9",
+          mode: "pov",
+          camera_mode: body.videoParams?.cameraMode ?? "pov_walk",
+        },
+      });
+      await invokeOrchestrate(id);
+      return new Response(JSON.stringify({ ok: true, generationIds: [id] }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (body.action === "furniture_individual") {
+      const items = body.furniture ?? [];
+      if (items.length === 0) throw new Error("nenhum móvel selecionado");
+      const ids: string[] = [];
+      for (const f of items) {
+        const promptText = f.prompt?.trim()
+          ? f.prompt
+          : `a ${f.type}, photorealistic, single object, isolated, white background, neutral lighting`;
+        const id = await insertGeneration({
+          user_id: userId,
+          pipeline_type: "text_to_3d",
+          engine: "hunyuan_3_1",
+          status: "queued",
+          source_images: [],
+          prompt: promptText,
+          metadata: {
+            studio_origin: studioOrigin,
+            furniture_type: f.type,
+            isolation_prompt: f.isolation_prompt,
+            kind: "single_furniture",
+          },
+        });
+        ids.push(id);
+        await invokeOrchestrate(id);
+      }
+      return new Response(JSON.stringify({ ok: true, generationIds: ids }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    throw new Error(`ação desconhecida: ${body.action}`);
+  } catch (e) {
+    const msg = (e as Error).message;
+    console.error("studio-publish erro", msg);
+    return new Response(JSON.stringify({ ok: false, error: msg }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});

@@ -1,0 +1,163 @@
+{
+  "version": 1,
+  "sdk_version": "0.26.1",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://aqlbmyqrguizcxsdbbsj.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "arq3d-studio",
+      "version": "0.1.0",
+      "title": "Arq3D Studio"
+    },
+    "tools": [
+      {
+        "name": "list_projects",
+        "title": "Listar projetos",
+        "description": "Lista os projetos do usuário autenticado (nome, cliente, prazo, briefing).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "limit": {
+              "description": "Máximo de projetos (padrão 20).",
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "search": {
+              "description": "Filtra pelo nome do projeto.",
+              "type": "string"
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_project",
+        "title": "Detalhar projeto",
+        "description": "Retorna um projeto do usuário com os assets (gerações) vinculados a ele.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "project_id": {
+              "type": "string",
+              "description": "ID do projeto."
+            }
+          },
+          "required": [
+            "project_id"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_project",
+        "title": "Criar projeto",
+        "description": "Cria um novo projeto para o usuário autenticado.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Nome do projeto."
+            },
+            "client_name": {
+              "description": "Nome do cliente.",
+              "type": "string"
+            },
+            "briefing": {
+              "description": "Briefing do projeto.",
+              "type": "string"
+            },
+            "deadline": {
+              "description": "Prazo em formato ISO (YYYY-MM-DD).",
+              "type": "string"
+            }
+          },
+          "required": [
+            "name"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_generations",
+        "title": "Listar gerações",
+        "description": "Lista as gerações da biblioteca do usuário (renders, vídeos, 3D), com filtros de pipeline e status.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "limit": {
+              "description": "Máximo de itens (padrão 20).",
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "pipeline_type": {
+              "description": "Filtra pelo tipo de pipeline (ex.: floorplan_render, redecorate, text_to_3d).",
+              "type": "string"
+            },
+            "status": {
+              "description": "Filtra pelo status (ex.: pending, processing, completed, failed).",
+              "type": "string"
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_generation",
+        "title": "Detalhar geração",
+        "description": "Retorna os detalhes de uma geração do usuário, incluindo status, erro e URLs de saída.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "generation_id": {
+              "type": "string",
+              "description": "ID da geração."
+            }
+          },
+          "required": [
+            "generation_id"
+          ]
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
