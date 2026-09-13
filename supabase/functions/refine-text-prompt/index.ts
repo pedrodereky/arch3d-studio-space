@@ -5,8 +5,7 @@
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -31,9 +30,7 @@ Deno.serve(async (req) => {
     const prompt: string = (body?.prompt ?? "").toString().trim();
     if (prompt.length < 3) return json({ error: "Prompt vazio" }, 400);
 
-    const answers: Answer[] | undefined = Array.isArray(body?.answers)
-      ? body.answers
-      : undefined;
+    const answers: Answer[] | undefined = Array.isArray(body?.answers) ? body.answers : undefined;
 
     const mode = answers && answers.length > 0 ? "compose" : "questions";
 
@@ -119,9 +116,7 @@ async function composePrompt(apiKey: string, prompt: string, answers: Answer[]) 
     "denso e descritivo (1 a 3 frases), incorporando todas as respostas de forma natural. " +
     "Sempre termine exatamente com: 'photorealistic, single object, isolated, white background, neutral studio lighting'.";
 
-  const answersText = answers
-    .map((a) => `- ${a.questionLabel}: ${a.value}`)
-    .join("\n");
+  const answersText = answers.map((a) => `- ${a.questionLabel}: ${a.value}`).join("\n");
 
   const tool = {
     type: "function",
@@ -160,10 +155,7 @@ async function composePrompt(apiKey: string, prompt: string, answers: Answer[]) 
   return forwardOrParse(r, (parsed) => ({ finalPrompt: parsed.finalPrompt ?? "" }));
 }
 
-async function forwardOrParse(
-  r: Response,
-  pick: (parsed: any) => Record<string, unknown>,
-) {
+async function forwardOrParse(r: Response, pick: (parsed: any) => Record<string, unknown>) {
   if (!r.ok) {
     if (r.status === 429) {
       return json({ error: "Limite de requisições atingido. Tente em alguns segundos." }, 429);

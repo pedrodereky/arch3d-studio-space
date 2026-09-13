@@ -123,7 +123,11 @@ function ResetPage() {
           )}
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
-            <Link to="/entrar" search={{ redirect: "/app" }} className="font-medium text-foreground hover:underline">
+            <Link
+              to="/entrar"
+              search={{ redirect: "/app" }}
+              className="font-medium text-foreground hover:underline"
+            >
               Voltar para entrar
             </Link>
           </p>

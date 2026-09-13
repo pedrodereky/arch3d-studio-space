@@ -6,8 +6,7 @@ import { callGptImage2OpenAI } from "../_shared/gpt-image-2-openai.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -58,9 +57,7 @@ async function uploadResult(
     .from("outputs")
     .upload(path, bytes, { upsert: true, contentType: mime });
   if (error) throw error;
-  const { data } = await admin.storage
-    .from("outputs")
-    .createSignedUrl(path, 60 * 60 * 24 * 7);
+  const { data } = await admin.storage.from("outputs").createSignedUrl(path, 60 * 60 * 24 * 7);
   return { url: data?.signedUrl ?? path, path };
 }
 
@@ -101,7 +98,8 @@ async function callGemini(
   });
   if (!r.ok) {
     const t = await r.text();
-    if (r.status === 429) throw new Error("RATE_LIMIT: limite de requisições atingido, aguarde alguns segundos.");
+    if (r.status === 429)
+      throw new Error("RATE_LIMIT: limite de requisições atingido, aguarde alguns segundos.");
     if (r.status === 402) throw new Error("CREDITS: créditos esgotados no workspace Lovable.");
     throw new Error(`gateway ${r.status}: ${t.slice(0, 300)}`);
   }
@@ -141,13 +139,18 @@ async function runOp(
       case "remove_background":
         return "Isolate the main subject from the image. Output a PNG with a fully transparent background, keeping only the main subject. Preserve all detail and edges. No shadows, no extra elements.";
       case "compose":
-        return prompt || "Combine the provided images into a single coherent, photorealistic scene. Match lighting, perspective and scale.";
+        return (
+          prompt ||
+          "Combine the provided images into a single coherent, photorealistic scene. Match lighting, perspective and scale."
+        );
       case "edit":
         return prompt || "Edit the image as instructed.";
       case "upscale":
         return "Upscale this image to higher resolution while preserving all details, sharpness, and original style. Do not change content.";
       case "variations":
-        return prompt ? `Create a variation of this image with the following change: ${prompt}` : "Create a creative variation of this image.";
+        return prompt
+          ? `Create a variation of this image with the following change: ${prompt}`
+          : "Create a creative variation of this image.";
       default:
         return prompt;
     }
@@ -225,19 +228,21 @@ function descendantsOf(graph: Graph, nodeId: string): Set<string> {
 }
 
 async function processStep(runId: string, retryNodeId?: string) {
-  const { data: run, error } = await admin
-    .from("studio_runs")
-    .select("*")
-    .eq("id", runId)
-    .single();
+  const { data: run, error } = await admin.from("studio_runs").select("*").eq("id", runId).single();
   if (error || !run) throw new Error(`run não encontrada: ${error?.message}`);
 
   const graph = run.graph as Graph;
   const userId = run.user_id as string;
   const order = topoSort(graph);
   const total = graph.nodes.length || 1;
-  let nodeResults: Record<string, { url?: string; path?: string; mime?: string; ms?: number; error?: string }> = {
-    ...((run.node_results as Record<string, { url?: string; path?: string; mime?: string; ms?: number; error?: string }>) ?? {}),
+  let nodeResults: Record<
+    string,
+    { url?: string; path?: string; mime?: string; ms?: number; error?: string }
+  > = {
+    ...((run.node_results as Record<
+      string,
+      { url?: string; path?: string; mime?: string; ms?: number; error?: string }
+    >) ?? {}),
   };
 
   if (retryNodeId) {
@@ -278,9 +283,9 @@ async function processStep(runId: string, retryNodeId?: string) {
   }
 
   if (!nextNodeId) {
-    const outputNode = graph.nodes.find((n) => ((n.data?.op ?? n.type) === "output"));
-    const finalUrl = outputNode ? nodeResults[outputNode.id]?.url ?? null : null;
-    const finalPath = outputNode ? nodeResults[outputNode.id]?.path ?? null : null;
+    const outputNode = graph.nodes.find((n) => (n.data?.op ?? n.type) === "output");
+    const finalUrl = outputNode ? (nodeResults[outputNode.id]?.url ?? null) : null;
+    const finalPath = outputNode ? (nodeResults[outputNode.id]?.path ?? null) : null;
     await admin
       .from("studio_runs")
       .update({
@@ -340,7 +345,12 @@ async function processStep(runId: string, retryNodeId?: string) {
         const prompt = (node.data.prompt as string) ?? "";
         const out = await runOp(op, model, prompt, inputs, node.data);
         const uploaded = await uploadResult(userId, runId, targetId, out.bytes, out.mime);
-        nodeResults[targetId] = { url: uploaded.url, path: uploaded.path, mime: out.mime, ms: Date.now() - t0 };
+        nodeResults[targetId] = {
+          url: uploaded.url,
+          path: uploaded.path,
+          mime: out.mime,
+          ms: Date.now() - t0,
+        };
       }
     } catch (e) {
       const msg = (e as Error).message;
@@ -366,9 +376,9 @@ async function processStep(runId: string, retryNodeId?: string) {
     }
 
     if (!hasMore) {
-      const outputNode = graph.nodes.find((n) => ((n.data?.op ?? n.type) === "output"));
-      const finalUrl = outputNode ? nodeResults[outputNode.id]?.url ?? null : null;
-      const finalPath = outputNode ? nodeResults[outputNode.id]?.path ?? null : null;
+      const outputNode = graph.nodes.find((n) => (n.data?.op ?? n.type) === "output");
+      const finalUrl = outputNode ? (nodeResults[outputNode.id]?.url ?? null) : null;
+      const finalPath = outputNode ? (nodeResults[outputNode.id]?.path ?? null) : null;
       await admin
         .from("studio_runs")
         .update({
@@ -382,10 +392,7 @@ async function processStep(runId: string, retryNodeId?: string) {
         })
         .eq("id", runId);
     } else {
-      await admin
-        .from("studio_runs")
-        .update({ node_results: nodeResults })
-        .eq("id", runId);
+      await admin.from("studio_runs").update({ node_results: nodeResults }).eq("id", runId);
     }
   };
 
@@ -458,9 +465,9 @@ Deno.serve(async (req) => {
     });
   } catch (e) {
     console.error("studio-execute:", e);
-    return new Response(
-      JSON.stringify({ ok: false, error: (e as Error).message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    return new Response(JSON.stringify({ ok: false, error: (e as Error).message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });

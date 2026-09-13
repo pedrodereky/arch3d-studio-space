@@ -113,9 +113,7 @@ export function PhotoDropzone({ file, previewUrl, onFile }: Props) {
       <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
         <ImagePlus className="h-7 w-7 text-muted-foreground" strokeWidth={1.5} />
       </div>
-      <p className="mt-5 text-base font-bold text-foreground">
-        Solte a foto do ambiente aqui
-      </p>
+      <p className="mt-5 text-base font-bold text-foreground">Solte a foto do ambiente aqui</p>
       <p className="mt-1 text-sm font-light text-muted-foreground">
         ou clique para escolher · JPG, PNG, HEIC · até 20MB
       </p>

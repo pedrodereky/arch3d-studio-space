@@ -1,5 +1,31 @@
-import { createFileRoute, Outlet, Navigate, useNavigate, Link, useLocation } from "@tanstack/react-router";
-import { Loader2, Home, Sparkles, Library, FolderOpen, User, LogOut, Shield, Box, Map, ChevronDown, ShieldCheck, Video, Workflow, Wand2, Type, ImageUp, Menu } from "lucide-react";
+import {
+  createFileRoute,
+  Outlet,
+  Navigate,
+  useNavigate,
+  Link,
+  useLocation,
+} from "@tanstack/react-router";
+import {
+  Loader2,
+  Home,
+  Sparkles,
+  Library,
+  FolderOpen,
+  User,
+  LogOut,
+  Shield,
+  Box,
+  Map,
+  ChevronDown,
+  ShieldCheck,
+  Video,
+  Workflow,
+  Wand2,
+  Type,
+  ImageUp,
+  Menu,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { Wordmark } from "@/components/brand/Wordmark";
@@ -81,13 +107,12 @@ function AuthenticatedLayout() {
     return <Navigate to="/configurar" replace />;
   }
 
-  const initials =
-    (profile?.full_name ?? user.email ?? "?")
-      .split(" ")
-      .map((p) => p[0])
-      .join("")
-      .slice(0, 2)
-      .toUpperCase();
+  const initials = (profile?.full_name ?? user.email ?? "?")
+    .split(" ")
+    .map((p) => p[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -264,9 +289,7 @@ function NavGroupItem({
       {expanded && (
         <div className="ml-4 mt-1 space-y-0.5 border-l border-white/10 pl-3">
           {group.children.map((child) => {
-            const active = child.exact
-              ? pathname === child.to
-              : pathname.startsWith(child.to);
+            const active = child.exact ? pathname === child.to : pathname.startsWith(child.to);
             return (
               <Link
                 key={child.to}

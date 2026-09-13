@@ -97,10 +97,7 @@ function ProjectDetailPage() {
     void load();
   }, [user, projectId]);
 
-  const existingIds = useMemo(
-    () => new Set(assets.map((a) => a.generation_id)),
-    [assets],
-  );
+  const existingIds = useMemo(() => new Set(assets.map((a) => a.generation_id)), [assets]);
 
   async function saveMeta() {
     if (!project) return;
@@ -140,7 +137,8 @@ function ProjectDetailPage() {
 
   async function deleteProject() {
     if (!project) return;
-    if (!confirm(`Excluir o projeto "${project.name}"? As gerações continuam na biblioteca.`)) return;
+    if (!confirm(`Excluir o projeto "${project.name}"? As gerações continuam na biblioteca.`))
+      return;
     const { error } = await supabase.from("projects").delete().eq("id", project.id);
     if (error) {
       toast.error("Erro: " + error.message);
@@ -234,7 +232,11 @@ function ProjectDetailPage() {
                 disabled={savingMeta}
                 className="inline-flex h-9 items-center gap-2 rounded-full bg-primary px-5 text-xs font-bold uppercase tracking-[0.12em] text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
               >
-                {savingMeta ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                {savingMeta ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Save className="h-3 w-3" />
+                )}
                 Salvar
               </button>
               <button

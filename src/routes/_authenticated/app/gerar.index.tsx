@@ -9,14 +9,7 @@ import {
   Loader2,
   RefreshCw,
 } from "lucide-react";
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ChangeEvent,
-  type DragEvent,
-} from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -117,17 +110,14 @@ function GerarPage() {
 
   const pipeline = PIPELINES.find((p) => p.id === pipelineId)!;
   const isTextPipeline = pipelineId === "text_to_3d";
-  const effectiveEngine: "hunyuan_2_1" | "hunyuan_3_1" = isTextPipeline
-    ? "hunyuan_3_1"
-    : engine;
+  const effectiveEngine: "hunyuan_2_1" | "hunyuan_3_1" = isTextPipeline ? "hunyuan_3_1" : engine;
 
   const hasReusedSource = (reusedFrom?.sourceImages.length ?? 0) > 0;
   const primarySatisfied = !!primary || hasReusedSource;
 
   const canGenerate = isTextPipeline
     ? textPrompt.trim().length >= 10
-    : primarySatisfied &&
-      (pipelineId !== "edit" || editPrompt.trim().length > 0);
+    : primarySatisfied && (pipelineId !== "edit" || editPrompt.trim().length > 0);
 
   // Carrega geração de origem quando ?from=<id>
   const loadedFromRef = useRef<string | null>(null);
@@ -137,9 +127,7 @@ function GerarPage() {
     void (async () => {
       const { data, error } = await supabase
         .from("generations")
-        .select(
-          "id,pipeline_type,engine,source_images,context_image_url,prompt,edit_instruction",
-        )
+        .select("id,pipeline_type,engine,source_images,context_image_url,prompt,edit_instruction")
         .eq("id", from)
         .maybeSingle();
       if (error || !data) {
@@ -159,16 +147,13 @@ function GerarPage() {
         setEngine(data.engine);
       }
       const srcs = Array.isArray(data.source_images)
-        ? (data.source_images as unknown[]).filter(
-            (x): x is string => typeof x === "string",
-          )
+        ? (data.source_images as unknown[]).filter((x): x is string => typeof x === "string")
         : [];
       setReusedFrom({
         id: data.id,
         sourceImages: srcs,
         contextImageUrl: (data.context_image_url as string | null) ?? null,
-        pipelineLabel:
-          PIPELINES.find((p) => p.id === pt)?.title ?? pt,
+        pipelineLabel: PIPELINES.find((p) => p.id === pt)?.title ?? pt,
       });
       const promptStr = (data.prompt as string | null) ?? "";
       if (pt === "text_to_3d") {
@@ -202,7 +187,6 @@ function GerarPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pipelineId]);
 
-
   const uploadToInputs = async (file: File, genId: string, name: string) => {
     if (!user) throw new Error("Sem usuário");
     const ext = file.name.split(".").pop() ?? "bin";
@@ -219,9 +203,7 @@ function GerarPage() {
 
   const handleGenerate = async (overridePrompt?: string) => {
     if (!user || submitting) return;
-    const effectivePrompt = isTextPipeline
-      ? (overridePrompt ?? textPrompt).trim()
-      : instruction;
+    const effectivePrompt = isTextPipeline ? (overridePrompt ?? textPrompt).trim() : instruction;
     if (isTextPipeline ? effectivePrompt.length < 10 : !canGenerate) return;
     setSubmitting(true);
     try {
@@ -361,9 +343,9 @@ function GerarPage() {
               Regenerando a partir de uma geração anterior
             </p>
             <p className="mt-0.5 text-[12px] font-light text-muted-foreground">
-              Pipeline {reusedFrom.pipelineLabel} · {hasReusedSource
-                ? "imagem de origem reaproveitada"
-                : "sem imagem de origem"}. Ajuste o prompt e gere novamente — você pode trocar a imagem se quiser.
+              Pipeline {reusedFrom.pipelineLabel} ·{" "}
+              {hasReusedSource ? "imagem de origem reaproveitada" : "sem imagem de origem"}. Ajuste
+              o prompt e gere novamente — você pode trocar a imagem se quiser.
             </p>
           </div>
           <button
@@ -398,9 +380,7 @@ function GerarPage() {
               onPrompt={setEditPrompt}
             />
           )}
-          {isTextPipeline && (
-            <TextTo3DForm prompt={textPrompt} onPrompt={setTextPrompt} />
-          )}
+          {isTextPipeline && <TextTo3DForm prompt={textPrompt} onPrompt={setTextPrompt} />}
         </div>
 
         {!isTextPipeline && (
@@ -492,7 +472,8 @@ function Header() {
         Geração de objetos em 3D
       </h1>
       <p className="mt-3 max-w-xl font-light text-muted-foreground">
-        Gere objetos em 3D a partir de imagem ou texto. Escolha um pipeline e a gente cuida do resto.
+        Gere objetos em 3D a partir de imagem ou texto. Escolha um pipeline e a gente cuida do
+        resto.
       </p>
 
       <div className="mt-6 grid gap-3 sm:grid-cols-3">
@@ -624,9 +605,7 @@ function PipelineCard({
       >
         <Icon className="h-[22px] w-[22px]" strokeWidth={1.75} />
       </div>
-      <h3 className="mt-4 text-base font-black tracking-tight text-foreground">
-        {pipeline.title}
-      </h3>
+      <h3 className="mt-4 text-base font-black tracking-tight text-foreground">{pipeline.title}</h3>
       <p className="mt-1.5 text-xs font-light leading-relaxed text-muted-foreground">
         {pipeline.desc}
       </p>
@@ -803,9 +782,7 @@ function Dropzone({
         if (f) acceptFile(f);
       }}
       className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border border-dashed px-6 py-12 text-center transition-colors ${
-        dragging
-          ? "border-accent bg-accent/5"
-          : "border-border bg-card hover:bg-muted/40"
+        dragging ? "border-accent bg-accent/5" : "border-border bg-card hover:bg-muted/40"
       }`}
     >
       <ImageUp className="h-10 w-10 text-muted-foreground" strokeWidth={1.5} />
@@ -848,13 +825,7 @@ function BasicForm({
   );
 }
 
-function TextTo3DForm({
-  prompt,
-  onPrompt,
-}: {
-  prompt: string;
-  onPrompt: (v: string) => void;
-}) {
+function TextTo3DForm({ prompt, onPrompt }: { prompt: string; onPrompt: (v: string) => void }) {
   const MIN = 10;
   const MAX = 1024;
   const trimmedLen = prompt.trim().length;
@@ -864,8 +835,8 @@ function TextTo3DForm({
   const counterTone = tooLong
     ? "text-destructive"
     : remaining <= 80
-    ? "text-accent"
-    : "text-muted-foreground";
+      ? "text-accent"
+      : "text-muted-foreground";
 
   return (
     <div className="space-y-6">
@@ -888,8 +859,8 @@ function TextTo3DForm({
             {tooShort
               ? `Descreva com pelo menos ${MIN} caracteres — faltam ${MIN - trimmedLen}.`
               : trimmedLen === 0
-              ? "Descreva forma, material, cor, estilo e iluminação. Quanto mais detalhe, melhor o resultado."
-              : "Quanto mais detalhe sobre forma, material, cor e iluminação, melhor o resultado."}
+                ? "Descreva forma, material, cor, estilo e iluminação. Quanto mais detalhe, melhor o resultado."
+                : "Quanto mais detalhe sobre forma, material, cor e iluminação, melhor o resultado."}
           </p>
           <span className={`shrink-0 text-[11px] font-light tabular-nums ${counterTone}`}>
             {prompt.length}/{MAX}
@@ -986,9 +957,8 @@ function ProgressOverlay({
   onBackground: () => void;
 }) {
   const steps = useMemo(() => {
-    if (pipeline.id === "direct")
-      return [PROGRESS_STEPS[0], PROGRESS_STEPS[3], PROGRESS_STEPS[4]];
-    
+    if (pipeline.id === "direct") return [PROGRESS_STEPS[0], PROGRESS_STEPS[3], PROGRESS_STEPS[4]];
+
     return [
       PROGRESS_STEPS[0],
       PROGRESS_STEPS[1],

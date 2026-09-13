@@ -89,8 +89,8 @@ function EmptyState() {
         Preencha o briefing à esquerda
       </h4>
       <p className="mt-2 max-w-sm text-[12px] font-light leading-relaxed text-muted-foreground">
-        Gere 4 propostas de planta baixa 2D em ~30 segundos. Cada proposta usa
-        uma seed diferente do mesmo modelo treinado em plantas arquitetônicas.
+        Gere 4 propostas de planta baixa 2D em ~30 segundos. Cada proposta usa uma seed diferente do
+        mesmo modelo treinado em plantas arquitetônicas.
       </p>
     </div>
   );

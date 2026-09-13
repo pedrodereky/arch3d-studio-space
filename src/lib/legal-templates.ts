@@ -92,8 +92,28 @@ export type PricingTier = {
 };
 
 export const DEFAULT_PRICING_TIERS: PricingTier[] = [
-  { name: "Free", price: 0, credits: 3, features: "3 gerações/mês\nMarca d'água\nResolução padrão" },
-  { name: "Starter", price: 49, credits: 30, features: "30 gerações/mês\nSem marca d'água\nFormatos GLB e FBX" },
-  { name: "Studio", price: 149, credits: 120, features: "120 gerações/mês\nProjetos ilimitados\nSuporte prioritário" },
-  { name: "Agency", price: 399, credits: 500, features: "500 gerações/mês\nMúltiplos usuários\nAPI de integração" },
+  {
+    name: "Free",
+    price: 0,
+    credits: 3,
+    features: "3 gerações/mês\nMarca d'água\nResolução padrão",
+  },
+  {
+    name: "Starter",
+    price: 49,
+    credits: 30,
+    features: "30 gerações/mês\nSem marca d'água\nFormatos GLB e FBX",
+  },
+  {
+    name: "Studio",
+    price: 149,
+    credits: 120,
+    features: "120 gerações/mês\nProjetos ilimitados\nSuporte prioritário",
+  },
+  {
+    name: "Agency",
+    price: 399,
+    credits: 500,
+    features: "500 gerações/mês\nMúltiplos usuários\nAPI de integração",
+  },
 ];

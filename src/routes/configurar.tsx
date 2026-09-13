@@ -1,22 +1,12 @@
 import { createFileRoute, Navigate, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import {
-  Loader2,
-  Check,
-  CheckCircle2,
-  AlertCircle,
-  ExternalLink,
-  Upload,
-} from "lucide-react";
+import { Loader2, Check, CheckCircle2, AlertCircle, ExternalLink, Upload } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/integrations/supabase/client";
 import { Wordmark } from "@/components/brand/Wordmark";
 import { WizardShell, type WizardStep } from "@/components/wizard/WizardShell";
 import { toast } from "sonner";
-import {
-  TERMOS_USO_TEMPLATE,
-  POLITICA_PRIVACIDADE_TEMPLATE,
-} from "@/lib/legal-templates";
+import { TERMOS_USO_TEMPLATE, POLITICA_PRIVACIDADE_TEMPLATE } from "@/lib/legal-templates";
 
 export const Route = createFileRoute("/configurar")({
   component: SetupWizard,
@@ -323,9 +313,7 @@ function SetupWizard() {
 /* ============== STEP COMPONENTS ============== */
 
 function H2({ children }: { children: React.ReactNode }) {
-  return (
-    <h2 className="text-3xl font-black tracking-tight text-foreground">{children}</h2>
-  );
+  return <h2 className="text-3xl font-black tracking-tight text-foreground">{children}</h2>;
 }
 function Lead({ children }: { children: React.ReactNode }) {
   return <p className="mt-3 font-light leading-relaxed text-muted-foreground">{children}</p>;
@@ -349,8 +337,8 @@ function StepWelcome() {
     <div>
       <H2>Bem-vindo ao Arq3D Studio</H2>
       <Lead>
-        Vamos configurar sua instância em poucos passos: conexão das APIs de IA, branding e
-        termos. Leva entre 3 e 5 minutos.
+        Vamos configurar sua instância em poucos passos: conexão das APIs de IA, branding e termos.
+        Leva entre 3 e 5 minutos.
       </Lead>
       <ul className="mt-8 space-y-3">
         {items.map((it) => (
@@ -519,8 +507,8 @@ function StepGemini({
     <div>
       <H2>Configure sua chave Google Gemini</H2>
       <Lead>
-        O Gemini é usado para limpar fundos, gerar vistas multi-view e fazer edições antes de
-        virar 3D. O plano gratuito do Google AI Studio funciona para começar.
+        O Gemini é usado para limpar fundos, gerar vistas multi-view e fazer edições antes de virar
+        3D. O plano gratuito do Google AI Studio funciona para começar.
       </Lead>
       <ExternalDocLink href="https://aistudio.google.com/apikey">
         Como pegar sua API key
@@ -724,9 +712,7 @@ function StepDone({ form }: { form: FormState }) {
             <CheckCircle2
               className={"h-4 w-4 " + (it.ok ? "text-accent" : "text-muted-foreground/40")}
             />
-            <span className={it.ok ? "text-foreground" : "text-muted-foreground"}>
-              {it.label}
-            </span>
+            <span className={it.ok ? "text-foreground" : "text-muted-foreground"}>{it.label}</span>
           </li>
         ))}
       </ul>

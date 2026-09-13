@@ -100,9 +100,7 @@ export function StylePicker({
                 <button
                   key={hint}
                   type="button"
-                  onClick={() =>
-                    onCustomPrompt((customPrompt ? customPrompt + ", " : "") + hint)
-                  }
+                  onClick={() => onCustomPrompt((customPrompt ? customPrompt + ", " : "") + hint)}
                   className="rounded-md border border-border bg-card px-2 py-1 text-[11px] font-light text-muted-foreground transition-colors hover:border-accent/40 hover:text-foreground"
                 >
                   + {hint}

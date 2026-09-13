@@ -28,15 +28,12 @@ export function LoadingStepper() {
   const adaptiveMessage = useMemo(() => {
     if (seconds < 25) return "Isso leva cerca de 20 segundos";
     if (seconds < 60) return "Renderizando variações em alta resolução";
-    if (seconds < 180)
-      return "Ainda processando — pode levar até 3 min em horário de pico";
+    if (seconds < 180) return "Ainda processando — pode levar até 3 min em horário de pico";
     return "Quase lá. Se preferir, feche a aba — a gente te avisa quando terminar";
   }, [seconds]);
 
   // Acumulado por etapa
-  const cumulatives = STEPS.map((_, i) =>
-    STEPS.slice(0, i + 1).reduce((a, s) => a + s.estMs, 0),
-  );
+  const cumulatives = STEPS.map((_, i) => STEPS.slice(0, i + 1).reduce((a, s) => a + s.estMs, 0));
   const lastIdx = STEPS.length - 1;
 
   return (
@@ -52,9 +49,7 @@ export function LoadingStepper() {
             <p className="text-[11px] font-black uppercase tracking-[0.12em] text-muted-foreground">
               Redecorando
             </p>
-            <p className="mt-1 text-lg font-black text-foreground">
-              {adaptiveMessage}
-            </p>
+            <p className="mt-1 text-lg font-black text-foreground">{adaptiveMessage}</p>
           </div>
           <p
             className="shrink-0 rounded-md border border-border bg-background px-2 py-1 font-mono text-[11px] font-bold tabular-nums text-muted-foreground"
@@ -73,10 +68,7 @@ export function LoadingStepper() {
             const isLast = i === lastIdx;
             const isDone = !isLast && elapsed >= cumulative;
             const isActive =
-              !isDone &&
-              (isLast
-                ? elapsed >= prevCumulative
-                : elapsed >= prevCumulative);
+              !isDone && (isLast ? elapsed >= prevCumulative : elapsed >= prevCumulative);
 
             return (
               <div key={s.label} className="flex items-center gap-3">
@@ -92,10 +84,7 @@ export function LoadingStepper() {
                   {isDone ? (
                     <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
                   ) : isActive ? (
-                    <Loader2
-                      className="h-3.5 w-3.5 animate-spin"
-                      strokeWidth={2}
-                    />
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={2} />
                   ) : (
                     <span className="text-[10px] font-black">{i + 1}</span>
                   )}

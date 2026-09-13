@@ -56,7 +56,8 @@ export const AI_PIPELINE_STEPS: PipelineStep[] = [
   },
   {
     stage: "Render do candidato",
-    purpose: "Renderiza a imagem final (quality=high, imagens de referência preservadas pelo modelo).",
+    purpose:
+      "Renderiza a imagem final (quality=high, imagens de referência preservadas pelo modelo).",
     model: "openai/gpt-image-2 (OpenAI API direta)",
     file: "supabase/functions/orchestrate-generation/index.ts",
     viaGateway: false,

@@ -337,9 +337,7 @@ function Step1({
             {converting ? (
               <>
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                <span className="mt-3 text-sm text-muted-foreground">
-                  Convertendo PDF…
-                </span>
+                <span className="mt-3 text-sm text-muted-foreground">Convertendo PDF…</span>
               </>
             ) : (
               <>
@@ -509,9 +507,7 @@ function Step2({
             </div>
           )}
           <div className="relative min-h-[400px]">
-            {tab === "analysis" && (
-              <InlineAnalysis loading={analyzing} analysis={analysis} />
-            )}
+            {tab === "analysis" && <InlineAnalysis loading={analyzing} analysis={analysis} />}
             {tab === "compare" && analysis && briefing && (
               <CompareView analysis={analysis} briefing={briefing} />
             )}
@@ -588,15 +584,11 @@ function InlineAnalysis({
             {analysis.bedrooms != null && (
               <Stat label="Quartos" value={String(analysis.bedrooms)} />
             )}
-            {analysis.suites != null && (
-              <Stat label="Suítes" value={String(analysis.suites)} />
-            )}
+            {analysis.suites != null && <Stat label="Suítes" value={String(analysis.suites)} />}
             {analysis.bathrooms != null && (
               <Stat label="Banhos" value={String(analysis.bathrooms)} />
             )}
-            {analysis.garages != null && (
-              <Stat label="Vagas" value={String(analysis.garages)} />
-            )}
+            {analysis.garages != null && <Stat label="Vagas" value={String(analysis.garages)} />}
           </div>
         </Section>
       )}
@@ -684,10 +676,7 @@ function CompareView({
           </thead>
           <tbody>
             {rows.map((r) => {
-              const diff =
-                r.pedido != null && r.detectado != null
-                  ? r.detectado - r.pedido
-                  : null;
+              const diff = r.pedido != null && r.detectado != null ? r.detectado - r.pedido : null;
               const ok = diff != null && Math.abs(diff) < 0.5;
               return (
                 <tr key={r.label} className="border-t border-border">

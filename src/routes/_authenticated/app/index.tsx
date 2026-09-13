@@ -1,6 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Sparkles, FolderOpen, Library, Map, ArrowRight, Loader2, Workflow, Wand2 } from "lucide-react";
+import {
+  Sparkles,
+  FolderOpen,
+  Library,
+  Map,
+  ArrowRight,
+  Loader2,
+  Workflow,
+  Wand2,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { FreshImg } from "@/components/library/FreshMedia";
@@ -133,10 +142,31 @@ function DashboardPage() {
         <h2 className="text-xl font-black tracking-tight text-foreground">Comece por aqui</h2>
         <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {[
-            { icon: Wand2, title: "Redecorar ambiente", desc: "Foto real → 4 propostas em 20s.", to: "/app/gerar/redecorar", badge: "Novo" },
-            { icon: Sparkles, title: "Gerar objeto 3D", desc: "Sobe uma foto ou descreve.", to: "/app/gerar" },
-            { icon: Map, title: "Render de planta", desc: "Planta 2D vira render 3D.", to: "/app/gerar/planta" },
-            { icon: FolderOpen, title: "Projetos", desc: "Agrupe por cliente.", to: "/app/projetos" },
+            {
+              icon: Wand2,
+              title: "Redecorar ambiente",
+              desc: "Foto real → 4 propostas em 20s.",
+              to: "/app/gerar/redecorar",
+              badge: "Novo",
+            },
+            {
+              icon: Sparkles,
+              title: "Gerar objeto 3D",
+              desc: "Sobe uma foto ou descreve.",
+              to: "/app/gerar",
+            },
+            {
+              icon: Map,
+              title: "Render de planta",
+              desc: "Planta 2D vira render 3D.",
+              to: "/app/gerar/planta",
+            },
+            {
+              icon: FolderOpen,
+              title: "Projetos",
+              desc: "Agrupe por cliente.",
+              to: "/app/projetos",
+            },
           ].map((c) => (
             <Link
               key={c.title}
@@ -222,9 +252,7 @@ function DashboardPage() {
         </div>
         {projects.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border/60 bg-card/50 p-10 text-center">
-            <p className="text-sm font-light text-muted-foreground">
-              Nenhum projeto criado ainda.
-            </p>
+            <p className="text-sm font-light text-muted-foreground">Nenhum projeto criado ainda.</p>
           </div>
         ) : (
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">

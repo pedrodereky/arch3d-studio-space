@@ -6,8 +6,7 @@
 import type { MeshResult } from "./furniture-mesh.ts";
 import type { SceneObject } from "./scene-extract.ts";
 
-const HUNYUAN3D_2_VERSION =
-  "895e514f953d39e8b5bfb859df9313481ad3fa3a8631e5c54c7e5c9c85a6aa9f";
+const HUNYUAN3D_2_VERSION = "895e514f953d39e8b5bfb859df9313481ad3fa3a8631e5c54c7e5c9c85a6aa9f";
 
 const MAX_CONCURRENCY = 2;
 const MAX_RETRIES = 4;
@@ -40,10 +39,7 @@ async function pollPrediction(
   throw new Error("prediction timeout");
 }
 
-async function generateMeshFromImageUrl(
-  token: string,
-  imageUrl: string,
-): Promise<Uint8Array> {
+async function generateMeshFromImageUrl(token: string, imageUrl: string): Promise<Uint8Array> {
   let lastErr: Error | null = null;
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
@@ -80,11 +76,7 @@ async function generateMeshFromImageUrl(
       if (pred.status === "succeeded") {
         const out = pred.output;
         glbUrl =
-          typeof out === "string"
-            ? out
-            : Array.isArray(out)
-              ? out[out.length - 1]
-              : out?.mesh;
+          typeof out === "string" ? out : Array.isArray(out) ? out[out.length - 1] : out?.mesh;
       } else {
         const url = pred.urls?.get;
         if (!url) throw new Error("prediction sem url de get");
@@ -108,11 +100,7 @@ export type SceneMeshContext = {
     mime: string,
     prompt: string,
   ) => Promise<{ bytes: Uint8Array; mime: string }>;
-  uploadIntermediate: (
-    name: string,
-    bytes: Uint8Array,
-    mime: string,
-  ) => Promise<string>;
+  uploadIntermediate: (name: string, bytes: Uint8Array, mime: string) => Promise<string>;
   bytesToBase64: (bytes: Uint8Array) => string;
   sceneImageB64: string;
   sceneImageMime: string;
@@ -160,10 +148,7 @@ export async function generateSceneObjectMeshes(
     }
   }
 
-  const workers = Array.from(
-    { length: Math.min(MAX_CONCURRENCY, objects.length) },
-    () => worker(),
-  );
+  const workers = Array.from({ length: Math.min(MAX_CONCURRENCY, objects.length) }, () => worker());
   await Promise.all(workers);
   return results;
 }

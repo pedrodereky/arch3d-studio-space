@@ -7,8 +7,7 @@ import { runFloorplanVision } from "../_shared/replicate-floorplan.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -114,16 +113,15 @@ Deno.serve(async (req) => {
       cost_usd: COST_VISION,
     } as never);
 
-    return new Response(
-      JSON.stringify({ ok: true, generationId: gen.id, analysis }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    return new Response(JSON.stringify({ ok: true, generationId: gen.id, analysis }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (e) {
     const msg = (e as Error).message ?? "falha desconhecida";
     console.error("analyze-existing-floorplan erro", msg);
-    return new Response(
-      JSON.stringify({ ok: false, error: msg }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    return new Response(JSON.stringify({ ok: false, error: msg }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });

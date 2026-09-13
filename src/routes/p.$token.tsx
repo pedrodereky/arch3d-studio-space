@@ -43,16 +43,14 @@ function SharedProjectPage() {
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
-    void supabase
-      .rpc("get_shared_project", { _token: token })
-      .then(({ data: result, error }) => {
-        setLoading(false);
-        if (error || !result) {
-          setNotFound(true);
-          return;
-        }
-        setData(result as unknown as SharedProject);
-      });
+    void supabase.rpc("get_shared_project", { _token: token }).then(({ data: result, error }) => {
+      setLoading(false);
+      if (error || !result) {
+        setNotFound(true);
+        return;
+      }
+      setData(result as unknown as SharedProject);
+    });
   }, [token]);
 
   if (loading) {

@@ -49,8 +49,8 @@ export function Hero() {
             Da referência ao 3D pronto em 60 segundos.
           </h1>
           <p className="mt-6 max-w-xl text-lg font-light leading-relaxed text-muted-foreground">
-            Você sobe uma foto, planta ou referência do Pinterest. A gente entrega o modelo 3D pronto
-            para Lumion, SketchUp ou Revit. Sem garimpar 3D Warehouse.
+            Você sobe uma foto, planta ou referência do Pinterest. A gente entrega o modelo 3D
+            pronto para Lumion, SketchUp ou Revit. Sem garimpar 3D Warehouse.
           </p>
           <div className="mt-9 flex flex-wrap items-center gap-3">
             <Link
@@ -99,7 +99,9 @@ export function Hero() {
                       </div>
                     )}
                     {row.status === "ready" && (
-                      <p className="mt-1 text-[11px] text-white/50">GLB · 1.2 MB · 8.2k polígonos</p>
+                      <p className="mt-1 text-[11px] text-white/50">
+                        GLB · 1.2 MB · 8.2k polígonos
+                      </p>
                     )}
                     {row.status === "queued" && (
                       <p className="mt-1 text-[11px] text-white/40">Posição 2 na fila</p>

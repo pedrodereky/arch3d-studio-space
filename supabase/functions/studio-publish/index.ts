@@ -12,8 +12,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -45,19 +44,13 @@ async function getUserId(req: Request): Promise<string> {
 }
 
 async function freshSignedUrl(path: string, ttlSec = 60 * 60 * 24 * 7): Promise<string> {
-  const { data, error } = await admin.storage
-    .from("outputs")
-    .createSignedUrl(path, ttlSec);
+  const { data, error } = await admin.storage.from("outputs").createSignedUrl(path, ttlSec);
   if (error || !data?.signedUrl) throw new Error(`assinar url: ${error?.message ?? "?"}`);
   return data.signedUrl;
 }
 
 async function insertGeneration(row: Record<string, unknown>): Promise<string> {
-  const { data, error } = await admin
-    .from("generations")
-    .insert(row)
-    .select("id")
-    .single();
+  const { data, error } = await admin.from("generations").insert(row).select("id").single();
   if (error || !data) throw new Error(`insert generation: ${error?.message ?? "?"}`);
   return data.id as string;
 }

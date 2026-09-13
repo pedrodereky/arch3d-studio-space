@@ -112,11 +112,7 @@ const TOOL_SCHEMA = {
         has_facade_style: { type: "boolean" },
         prompt_for_gpt_image_2: { type: "string" },
       },
-      required: [
-        "classifications",
-        "reference_page_indices",
-        "prompt_for_gpt_image_2",
-      ],
+      required: ["classifications", "reference_page_indices", "prompt_for_gpt_image_2"],
       additionalProperties: false,
     },
   },
@@ -180,18 +176,14 @@ export async function analyzeFloorplan(
   const refsRaw: number[] = Array.isArray(parsed.reference_page_indices)
     ? parsed.reference_page_indices
     : [];
-  const refs = refsRaw
-    .filter((i) => Number.isInteger(i) && i >= 0 && i < pages.length)
-    .slice(0, 6);
+  const refs = refsRaw.filter((i) => Number.isInteger(i) && i >= 0 && i < pages.length).slice(0, 6);
   if (refs.length === 0) {
     // Fallback: usa as primeiras 4 páginas
     for (let i = 0; i < Math.min(4, pages.length); i++) refs.push(i);
   }
 
   const cls: PageClassification[] = Array.isArray(parsed.classifications)
-    ? parsed.classifications.filter(
-        (c: PageClassification) => Number.isInteger(c.page_index),
-      )
+    ? parsed.classifications.filter((c: PageClassification) => Number.isInteger(c.page_index))
     : [];
 
   const promptFinal = String(parsed.prompt_for_gpt_image_2 ?? "").trim();

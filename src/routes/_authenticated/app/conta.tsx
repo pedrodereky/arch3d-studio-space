@@ -97,9 +97,7 @@ function ContaPage() {
     <div className="mx-auto max-w-[820px] space-y-10">
       <header>
         <h1 className="text-3xl font-black tracking-tight text-foreground">Conta</h1>
-        <p className="mt-2 font-light text-muted-foreground">
-          Seus dados, senha e consumo do mês.
-        </p>
+        <p className="mt-2 font-light text-muted-foreground">Seus dados, senha e consumo do mês.</p>
       </header>
 
       {/* Consumo */}
@@ -140,9 +138,7 @@ function ContaPage() {
           <form onSubmit={saveProfile} className="flex-1 space-y-4">
             <div>
               <h2 className="text-xl font-black tracking-tight text-foreground">Dados pessoais</h2>
-              <p className="mt-1 text-xs font-light text-muted-foreground">
-                Email: {user?.email}
-              </p>
+              <p className="mt-1 text-xs font-light text-muted-foreground">Email: {user?.email}</p>
             </div>
             <Field label="Nome completo">
               <input

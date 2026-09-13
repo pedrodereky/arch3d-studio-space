@@ -114,7 +114,8 @@ export function GerarVideoDialog({
             Gerar vídeo
           </DialogTitle>
           <DialogDescription>
-            15 segundos · 1080p · 16:9 · modelo Happyhorse 1.0. Escolha o tipo de movimento de câmera abaixo.
+            15 segundos · 1080p · 16:9 · modelo Happyhorse 1.0. Escolha o tipo de movimento de
+            câmera abaixo.
           </DialogDescription>
         </DialogHeader>
 

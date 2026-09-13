@@ -16,9 +16,9 @@ const MAX_PDF_PAGES = 20;
 // Tamanho-alvo permite que 15 pranchas caibam confortavelmente abaixo de qualquer limite de payload.
 async function pdfAllPagesToJpegs(file: File): Promise<File[]> {
   const pdfjs = await import("pdfjs-dist");
-  const workerMod = (await import(
-    /* @vite-ignore */ "pdfjs-dist/build/pdf.worker.mjs?url"
-  )) as { default: string };
+  const workerMod = (await import(/* @vite-ignore */ "pdfjs-dist/build/pdf.worker.mjs?url")) as {
+    default: string;
+  };
   pdfjs.GlobalWorkerOptions.workerSrc = workerMod.default;
 
   const buf = await file.arrayBuffer();
@@ -39,11 +39,7 @@ async function pdfAllPagesToJpegs(file: File): Promise<File[]> {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     await page.render({ canvasContext: ctx, viewport, canvas } as never).promise;
     const blob: Blob = await new Promise((res, rej) =>
-      canvas.toBlob(
-        (b) => (b ? res(b) : rej(new Error("toBlob falhou"))),
-        "image/jpeg",
-        0.85,
-      ),
+      canvas.toBlob((b) => (b ? res(b) : rej(new Error("toBlob falhou"))), "image/jpeg", 0.85),
     );
     out.push(new File([blob], `${baseName}-p${i}.jpg`, { type: "image/jpeg" }));
   }
@@ -155,10 +151,7 @@ function GerarPlantaPage() {
       for (let i = 0; i < files.length; i++) {
         urls.push(await uploadToInputs(files[i], gen.id, i));
       }
-      await supabase
-        .from("generations")
-        .update({ source_images: urls })
-        .eq("id", gen.id);
+      await supabase.from("generations").update({ source_images: urls }).eq("id", gen.id);
 
       const { error: fnErr } = await supabase.functions.invoke("orchestrate-generation", {
         body: { generationId: gen.id },
@@ -174,7 +167,6 @@ function GerarPlantaPage() {
       setSubmitting(false);
     }
   };
-
 
   useEffect(() => {
     if (!progressGenId) return;
@@ -223,8 +215,8 @@ function GerarPlantaPage() {
       <header className="mb-8">
         <h1 className="text-3xl font-black text-foreground">Render de planta</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Suba a planta executiva (PDF ou imagem) e a IA gera um render isométrico 3D
-          fotorrealista do espaço mobiliado.
+          Suba a planta executiva (PDF ou imagem) e a IA gera um render isométrico 3D fotorrealista
+          do espaço mobiliado.
         </p>
       </header>
 
@@ -243,13 +235,11 @@ function GerarPlantaPage() {
                 />
               </div>
             </div>
-            <span className="text-sm tabular-nums text-muted-foreground">
-              {progress.percent}%
-            </span>
+            <span className="text-sm tabular-nums text-muted-foreground">{progress.percent}%</span>
           </div>
           <p className="mt-4 text-xs text-muted-foreground">
-            O render isométrico costuma levar 1–2 minutos. Você pode fechar essa aba —
-            avisamos quando estiver pronto.
+            O render isométrico costuma levar 1–2 minutos. Você pode fechar essa aba — avisamos
+            quando estiver pronto.
           </p>
         </div>
       ) : (
@@ -268,21 +258,17 @@ function GerarPlantaPage() {
                 {converting ? (
                   <>
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                    <span className="mt-3 text-sm text-muted-foreground">
-                      Convertendo PDF…
-                    </span>
+                    <span className="mt-3 text-sm text-muted-foreground">Convertendo PDF…</span>
                   </>
                 ) : (
                   <>
-                    <Upload
-                      className="h-8 w-8 text-muted-foreground"
-                      strokeWidth={1.5}
-                    />
+                    <Upload className="h-8 w-8 text-muted-foreground" strokeWidth={1.5} />
                     <span className="mt-3 text-sm font-medium text-foreground">
                       Clique para enviar
                     </span>
                     <span className="mt-1 text-xs text-muted-foreground">
-                      PDF, PNG ou JPG · até 20MB · PDF multipágina usa planta + cortes + renders como referência
+                      PDF, PNG ou JPG · até 20MB · PDF multipágina usa planta + cortes + renders
+                      como referência
                     </span>
                   </>
                 )}
@@ -305,7 +291,8 @@ function GerarPlantaPage() {
                 )}
                 {files && files.length > 1 && (
                   <span className="absolute left-2 top-2 rounded-full bg-foreground/80 px-2.5 py-1 text-xs font-medium text-background">
-                    +{files.length - 1} {files.length - 1 === 1 ? "página" : "páginas"} de referência
+                    +{files.length - 1} {files.length - 1 === 1 ? "página" : "páginas"} de
+                    referência
                   </span>
                 )}
                 <button
@@ -322,11 +309,9 @@ function GerarPlantaPage() {
 
           {/* Tipo de vista */}
           <div className="rounded-md border border-border bg-card p-6">
-            <label className="mb-3 block text-sm font-medium text-foreground">
-              Tipo de vista
-            </label>
+            <label className="mb-3 block text-sm font-medium text-foreground">Tipo de vista</label>
             <div className="grid gap-3 sm:grid-cols-3">
-              {([
+              {[
                 {
                   v: "isometric_aerial" as const,
                   icon: Box,
@@ -345,7 +330,7 @@ function GerarPlantaPage() {
                   title: "Fachada externa",
                   desc: "Vista da rua, fachada centralizada. Mostra identidade visual.",
                 },
-              ]).map(({ v, icon: Icon, title, desc }) => {
+              ].map(({ v, icon: Icon, title, desc }) => {
                 const active = viewMode === v;
                 return (
                   <button
@@ -372,12 +357,8 @@ function GerarPlantaPage() {
 
           {/* Instruções extras */}
           <div className="rounded-md border border-border bg-card p-6">
-            <label
-              htmlFor="extra"
-              className="mb-2 block text-sm font-medium text-foreground"
-            >
-              Instruções extras de estilo{" "}
-              <span className="text-muted-foreground">(opcional)</span>
+            <label htmlFor="extra" className="mb-2 block text-sm font-medium text-foreground">
+              Instruções extras de estilo <span className="text-muted-foreground">(opcional)</span>
             </label>
             <textarea
               id="extra"
@@ -388,7 +369,8 @@ function GerarPlantaPage() {
               className="w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-accent"
             />
             <p className="mt-2 text-xs text-muted-foreground">
-              Use esse campo para ajustes de paleta, mood ou marca — não muda o tipo de vista escolhido acima.
+              Use esse campo para ajustes de paleta, mood ou marca — não muda o tipo de vista
+              escolhido acima.
             </p>
           </div>
 
@@ -407,7 +389,9 @@ function GerarPlantaPage() {
                   onChange={(e) => setDiagnosticsMode(e.target.checked)}
                   className="h-4 w-4 rounded border-border accent-accent"
                 />
-                <span className="text-sm text-foreground">{diagnosticsMode ? "Ativo" : "Desligado"}</span>
+                <span className="text-sm text-foreground">
+                  {diagnosticsMode ? "Ativo" : "Desligado"}
+                </span>
               </label>
             </div>
           )}
@@ -415,7 +399,8 @@ function GerarPlantaPage() {
           {/* Ação */}
           <div className="flex items-center justify-between gap-4">
             <p className="text-xs text-muted-foreground">
-              Tempo estimado: 1–2 minutos. Custo: ~US$ 0,60 por render (classificação com raciocínio profundo + 2 candidatos).
+              Tempo estimado: 1–2 minutos. Custo: ~US$ 0,60 por render (classificação com raciocínio
+              profundo + 2 candidatos).
             </p>
             <button
               type="button"
@@ -438,9 +423,8 @@ function GerarPlantaPage() {
       <div className="mt-10 flex items-start gap-3 rounded-md border border-border bg-muted/30 p-4">
         <Map className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
         <p className="text-xs text-muted-foreground">
-          Esse pipeline usa GPT-Image-2 e funciona melhor com plantas humanizadas ou
-          executivas com móveis e equipamentos já posicionados. Quanto mais detalhada a
-          planta, mais fiel o render.
+          Esse pipeline usa GPT-Image-2 e funciona melhor com plantas humanizadas ou executivas com
+          móveis e equipamentos já posicionados. Quanto mais detalhada a planta, mais fiel o render.
         </p>
       </div>
     </div>

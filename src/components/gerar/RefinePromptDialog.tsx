@@ -77,7 +77,7 @@ export function RefinePromptDialog({ open, onOpenChange, initialPrompt, onConfir
       prompt: initialPrompt,
       answers: questions.map((q) => {
         const raw = answers[q.id];
-        const value = raw === "__other__" ? otherText[q.id]?.trim() ?? "" : raw;
+        const value = raw === "__other__" ? (otherText[q.id]?.trim() ?? "") : raw;
         return { questionId: q.id, questionLabel: q.label, value };
       }),
     };
@@ -143,9 +143,7 @@ export function RefinePromptDialog({ open, onOpenChange, initialPrompt, onConfir
                     {q.label}
                   </p>
                   {q.hint && (
-                    <p className="mt-1 text-[12px] font-light text-muted-foreground/80">
-                      {q.hint}
-                    </p>
+                    <p className="mt-1 text-[12px] font-light text-muted-foreground/80">{q.hint}</p>
                   )}
                   <div className="mt-3 flex flex-wrap gap-2">
                     {q.options.map((opt) => {
@@ -193,9 +191,7 @@ export function RefinePromptDialog({ open, onOpenChange, initialPrompt, onConfir
                       autoFocus
                       placeholder="Descreva…"
                       value={otherText[q.id] ?? ""}
-                      onChange={(e) =>
-                        setOtherText((o) => ({ ...o, [q.id]: e.target.value }))
-                      }
+                      onChange={(e) => setOtherText((o) => ({ ...o, [q.id]: e.target.value }))}
                       className="mt-2 w-full rounded-[4px] border border-border bg-background px-3 py-2 text-sm font-light text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none"
                     />
                   )}
