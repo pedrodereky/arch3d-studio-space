@@ -5,6 +5,7 @@ import {
   useNavigate,
   Link,
   useLocation,
+  useMatches,
 } from "@tanstack/react-router";
 import {
   Loader2,
@@ -27,6 +28,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
+import "@/lib/route-static-data";
 import { Wordmark } from "@/components/brand/Wordmark";
 import { GenerationNotifier } from "@/components/notifications/GenerationNotifier";
 import {
@@ -99,7 +101,11 @@ function AuthenticatedLayout() {
   const { user, profile, isLoading, isAdmin, setupCompleted, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const matches = useMatches();
   const [menuOpen, setMenuOpen] = useState(false);
+
+  // Telas com trilho lateral pedem o `main` sem padding; elas mesmas dizem.
+  const fullBleed = matches.some((m) => m.staticData?.fullBleed);
 
   // Fecha o menu mobile sempre que a rota muda (inclui voltar/avançar).
   useEffect(() => {
@@ -222,7 +228,7 @@ function AuthenticatedLayout() {
             <span className="hidden sm:inline">Gerar</span>
           </Link>
         </header>
-        <main className="flex-1 p-4 md:p-10">
+        <main className={fullBleed ? "flex min-w-0 flex-1 flex-col" : "flex-1 p-4 md:p-10"}>
           <Outlet />
         </main>
       </div>

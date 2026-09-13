@@ -7,6 +7,12 @@ type Props = {
   onPreset: (id: RedecoratePresetId | null) => void;
   customPrompt: string;
   onCustomPrompt: (s: string) => void;
+  /**
+   * Versão para o trilho lateral: lista de uma coluna, sem ícone e sem um
+   * parágrafo por preset. A descrição do preset escolhido aparece embaixo —
+   * é a única que interessa depois da escolha.
+   */
+  compact?: boolean;
 };
 
 const PROMPT_HINTS = [
@@ -24,7 +30,9 @@ export function StylePicker({
   onPreset,
   customPrompt,
   onCustomPrompt,
+  compact = false,
 }: Props) {
+  const selected = REDECORATE_PRESETS.find((p) => p.id === presetId) ?? null;
   return (
     <div>
       <div className="flex gap-1 rounded-full bg-muted p-1">
@@ -52,7 +60,36 @@ export function StylePicker({
         </button>
       </div>
 
-      {mode === "preset" && (
+      {mode === "preset" && compact && (
+        <>
+          <div className="mt-3 flex flex-col gap-1">
+            {REDECORATE_PRESETS.map((p) => {
+              const active = p.id === presetId;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => onPreset(p.id)}
+                  className={`flex h-[34px] items-center rounded-lg border px-3 text-left text-[12px] transition-colors ${
+                    active
+                      ? "border-accent-foreground/25 bg-accent font-semibold text-accent-foreground"
+                      : "border-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                >
+                  {p.label}
+                </button>
+              );
+            })}
+          </div>
+          {selected && (
+            <p className="mt-3 text-[11.5px] font-light leading-relaxed text-muted-foreground">
+              {selected.description}.
+            </p>
+          )}
+        </>
+      )}
+
+      {mode === "preset" && !compact && (
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           {REDECORATE_PRESETS.map((p) => {
             const active = p.id === presetId;
@@ -90,11 +127,11 @@ export function StylePicker({
           <textarea
             value={customPrompt}
             onChange={(e) => onCustomPrompt(e.target.value.slice(0, 400))}
-            rows={5}
+            rows={compact ? 4 : 5}
             placeholder="Descreva o estilo desejado. Ex.: sala contemporânea com paleta neutra, toques de verde oliva, mobília em madeira clara, iluminação suave"
             className="w-full resize-none rounded-xl border border-border bg-background p-4 text-sm font-light text-foreground outline-none transition-colors focus:border-accent"
           />
-          <div className="mt-2 flex items-center justify-between">
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
             <div className="flex flex-wrap gap-1.5">
               {PROMPT_HINTS.map((hint) => (
                 <button
