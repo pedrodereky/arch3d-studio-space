@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, CheckCircle2, AlertCircle, AlertTriangle, KeyRound, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { qk } from "@/lib/query-keys";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/admin/configuracoes")({
@@ -76,44 +78,46 @@ type InstanceConfig = {
 };
 
 function ConfiguracoesPage() {
-  const [vault, setVault] = useState<Record<string, boolean>>({});
-  const [config, setConfig] = useState<InstanceConfig | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  const refresh = useCallback(async () => {
-    setError(null);
-    const [cfgRes, ...secretRes] = await Promise.all([
-      supabase
-        .from("instance_config")
-        .select(
-          "product_name,brand_secondary_color,custom_domain,setup_completed,replicate_configured,gemini_configured",
-        )
-        .eq("id", 1)
-        .maybeSingle(),
-      ...INTEGRATIONS.map((i) =>
-        supabase.rpc("admin_secret_exists", { _name: i.name }).then((r) => ({ name: i.name, r })),
-      ),
-    ]);
+  const {
+    data,
+    isPending: loading,
+    error: queryError,
+  } = useQuery({
+    queryKey: qk.secrets(),
+    queryFn: async () => {
+      const [cfgRes, ...secretRes] = await Promise.all([
+        supabase
+          .from("instance_config")
+          .select(
+            "product_name,brand_secondary_color,custom_domain,setup_completed,replicate_configured,gemini_configured",
+          )
+          .eq("id", 1)
+          .maybeSingle(),
+        ...INTEGRATIONS.map((i) =>
+          supabase.rpc("admin_secret_exists", { _name: i.name }).then((r) => ({ name: i.name, r })),
+        ),
+      ]);
 
-    if (cfgRes.error) {
-      setError(cfgRes.error.message);
-      setLoading(false);
-      return;
-    }
-    setConfig((cfgRes.data as InstanceConfig | null) ?? null);
+      if (cfgRes.error) throw new Error(cfgRes.error.message);
 
-    const next: Record<string, boolean> = {};
-    for (const item of secretRes) {
-      next[item.name] = item.r.error ? false : Boolean(item.r.data);
-    }
-    setVault(next);
-    setLoading(false);
-  }, []);
+      const vault: Record<string, boolean> = {};
+      for (const item of secretRes) {
+        vault[item.name] = item.r.error ? false : Boolean(item.r.data);
+      }
+      return { config: (cfgRes.data as InstanceConfig | null) ?? null, vault };
+    },
+  });
 
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+  const error = queryError?.message ?? null;
+  const config = data?.config ?? null;
+  const vault = useMemo(() => data?.vault ?? {}, [data]);
+
+  const refresh = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: qk.secrets() }),
+    [queryClient],
+  );
 
   return (
     <div className="mx-auto max-w-[1100px] space-y-8">

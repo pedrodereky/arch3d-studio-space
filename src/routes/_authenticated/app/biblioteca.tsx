@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Library as LibraryIcon,
   Loader2,
@@ -20,6 +21,7 @@ import {
 } from "lucide-react";
 import { GerarVideoDialog } from "@/components/biblioteca/GerarVideoDialog";
 import { supabase } from "@/integrations/supabase/client";
+import { qk } from "@/lib/query-keys";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -96,55 +98,46 @@ function BibliotecaPage() {
   const { destacar } = Route.useSearch();
   const navigate = useNavigate();
 
-  const [items, setItems] = useState<GenRow[] | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
   const [openVariant, setOpenVariant] = useState<number | null>(null);
-  const [hasMore, setHasMore] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
+  const queryClient = useQueryClient();
+
+  const listKey = useMemo(
+    () => qk.generationsList({ view: "biblioteca", userId: user?.id }),
+    [user?.id],
+  );
+
+  const { data, error, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
+    queryKey: listKey,
+    enabled: !!user,
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }) => {
+      const from = (pageParam as number) * PAGE_SIZE;
+      const { data: rows, error: queryError } = await supabase
+        .from("generations")
+        .select(SELECT_COLUMNS)
+        .order("created_at", { ascending: false })
+        .range(from, from + PAGE_SIZE - 1);
+      if (queryError) throw new Error(queryError.message);
+      return (rows ?? []) as GenRow[];
+    },
+    // Página curta significa fim da lista.
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.length === PAGE_SIZE ? allPages.length : undefined,
+  });
+
+  const items = useMemo(() => (data ? data.pages.flat() : null), [data]);
+  const hasMore = !!hasNextPage;
+  const loadingMore = isFetchingNextPage;
 
   useEffect(() => {
-    if (!user) return;
-    void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+    if (error) toast.error("Erro ao carregar biblioteca", { description: error.message });
+  }, [error]);
 
-  function selectPage(from: number, to: number) {
-    return supabase
-      .from("generations")
-      .select(SELECT_COLUMNS)
-      .order("created_at", { ascending: false })
-      .range(from, to);
-  }
-
-  /** Rebusca a janela já carregada, preservando a posição de quem paginou. */
-  async function load() {
-    const size = Math.max(items?.length ?? 0, PAGE_SIZE);
-    const { data, error } = await selectPage(0, size - 1);
-    if (error) {
-      toast.error("Erro ao carregar biblioteca", { description: error.message });
-      setItems([]);
-      return;
-    }
-    const rows = (data ?? []) as GenRow[];
-    setItems(rows);
-    setHasMore(rows.length >= size);
-  }
-
-  async function loadMore() {
-    if (!items || loadingMore || !hasMore) return;
-    setLoadingMore(true);
-    const { data, error } = await selectPage(items.length, items.length + PAGE_SIZE - 1);
-    setLoadingMore(false);
-    if (error) {
-      toast.error("Erro ao carregar mais", { description: error.message });
-      return;
-    }
-    const rows = (data ?? []) as GenRow[];
-    setItems((prev) => [...(prev ?? []), ...rows]);
-    setHasMore(rows.length === PAGE_SIZE);
-  }
+  /** Revalida as páginas já carregadas — react-query refaz cada uma. */
+  const reload = () => queryClient.invalidateQueries({ queryKey: listKey });
 
   useEffect(() => {
     if (!user) return;
@@ -154,24 +147,40 @@ function BibliotecaPage() {
         "postgres_changes",
         { event: "*", schema: "public", table: "generations", filter: `user_id=eq.${user.id}` },
         (payload) => {
-          // Antes qualquer evento rebuscava a lista inteira — durante um lote de
-          // gerações isso era uma query por evento. Agora a linha é aplicada no
-          // estado direto do payload.
+          // Aplica a linha direto no cache. Rebuscar a lista inteira a cada
+          // evento virava uma query por evento durante um lote de gerações.
+          type Infinite = { pages: GenRow[][]; pageParams: unknown[] };
+
           if (payload.eventType === "DELETE") {
             const gone = payload.old as { id?: string };
             if (!gone?.id) return;
-            setItems((prev) => prev?.filter((it) => it.id !== gone.id) ?? prev);
+            queryClient.setQueryData(listKey, (prev: Infinite | undefined) =>
+              prev
+                ? {
+                    ...prev,
+                    pages: prev.pages.map((page) => page.filter((it) => it.id !== gone.id)),
+                  }
+                : prev,
+            );
             return;
           }
+
           const row = payload.new as GenRow;
           if (!row?.id) return;
-          setItems((prev) => {
+          queryClient.setQueryData(listKey, (prev: Infinite | undefined) => {
             if (!prev) return prev;
-            const idx = prev.findIndex((it) => it.id === row.id);
-            if (idx === -1) return [row, ...prev];
-            const next = [...prev];
-            next[idx] = { ...next[idx], ...row };
-            return next;
+            const known = prev.pages.some((page) => page.some((it) => it.id === row.id));
+            if (known) {
+              return {
+                ...prev,
+                pages: prev.pages.map((page) =>
+                  page.map((it) => (it.id === row.id ? { ...it, ...row } : it)),
+                ),
+              };
+            }
+            // Linha nova entra no topo da primeira página.
+            const [first = [], ...rest] = prev.pages;
+            return { ...prev, pages: [[row, ...first], ...rest] };
           });
         },
       )
@@ -179,7 +188,7 @@ function BibliotecaPage() {
     return () => {
       void supabase.removeChannel(ch);
     };
-  }, [user]);
+  }, [user, queryClient, listKey]);
 
   const destacarRef = useRef<string | null>(null);
   useEffect(() => {
@@ -323,7 +332,7 @@ function BibliotecaPage() {
             {hasMore ? (
               <button
                 type="button"
-                onClick={() => void loadMore()}
+                onClick={() => void fetchNextPage()}
                 disabled={loadingMore}
                 className="inline-flex h-11 items-center gap-2 rounded-full border border-border bg-card px-6 text-[11px] font-black uppercase tracking-[0.12em] text-foreground transition-colors hover:border-accent disabled:opacity-50"
               >
@@ -358,7 +367,7 @@ function BibliotecaPage() {
               gen={openItem}
               selectedVariant={openVariant}
               onSelectVariant={setOpenVariant}
-              onChange={() => void load()}
+              onChange={() => void reload()}
               onClose={() => {
                 setOpenId(null);
                 setOpenVariant(null);

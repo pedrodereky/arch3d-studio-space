@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { qk } from "@/lib/query-keys";
 import { Loader2, ArrowLeft, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import type { TablesUpdate } from "@/integrations/supabase/types";
@@ -40,15 +42,15 @@ const eventColor: Record<string, string> = {
 
 function DiagnosticoDetailPage() {
   const { generationId } = Route.useParams();
-  const [gen, setGen] = useState<Gen | null>(null);
-  const [logs, setLogs] = useState<LogRow[]>([]);
-  const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [reprocessing, setReprocessing] = useState(false);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    let alive = true;
-    (async () => {
+  const queryKey = qk.generation(generationId);
+
+  const { data, isPending: loading } = useQuery({
+    queryKey,
+    queryFn: async () => {
       const [g, l] = await Promise.all([
         supabase
           .from("generations")
@@ -61,12 +63,21 @@ function DiagnosticoDetailPage() {
           .eq("generation_id", generationId)
           .order("created_at", { ascending: true }),
       ]);
-      if (!alive) return;
-      setGen((g.data as Gen) ?? null);
-      setLogs((l.data as LogRow[]) ?? []);
-      setLoading(false);
-    })();
+      const failure = g.error ?? l.error;
+      if (failure) throw new Error(failure.message);
+      return {
+        gen: (g.data as Gen) ?? null,
+        logs: (l.data as LogRow[]) ?? [],
+      };
+    },
+  });
 
+  const gen = data?.gen ?? null;
+  const logs = useMemo(() => data?.logs ?? [], [data]);
+
+  // Realtime escreve no cache em vez de num estado paralelo — assim a tela tem
+  // uma fonte de verdade só, e um refetch não descarta o que chegou por aqui.
+  useEffect(() => {
     const channel = supabase
       .channel(`diag-${generationId}`)
       .on(
@@ -78,7 +89,11 @@ function DiagnosticoDetailPage() {
           filter: `generation_id=eq.${generationId}`,
         },
         (payload) => {
-          setLogs((prev) => [...prev, payload.new as LogRow]);
+          queryClient.setQueryData(
+            queryKey,
+            (prev: { gen: Gen | null; logs: LogRow[] } | undefined) =>
+              prev ? { ...prev, logs: [...prev.logs, payload.new as LogRow] } : prev,
+          );
         },
       )
       .on(
@@ -90,16 +105,19 @@ function DiagnosticoDetailPage() {
           filter: `id=eq.${generationId}`,
         },
         (payload) => {
-          setGen((prev) => ({ ...(prev ?? {}), ...(payload.new as Gen) }));
+          queryClient.setQueryData(
+            queryKey,
+            (prev: { gen: Gen | null; logs: LogRow[] } | undefined) =>
+              prev ? { ...prev, gen: { ...(prev.gen ?? {}), ...(payload.new as Gen) } } : prev,
+          );
         },
       )
       .subscribe();
 
     return () => {
-      alive = false;
-      supabase.removeChannel(channel);
+      void supabase.removeChannel(channel);
     };
-  }, [generationId]);
+  }, [generationId, queryClient, queryKey]);
 
   const toggle = (id: string) =>
     setExpanded((prev) => {
@@ -127,7 +145,9 @@ function DiagnosticoDetailPage() {
         .eq("id", generationId);
       if (error) throw error;
       // limpa logs anteriores na UI
-      setLogs([]);
+      queryClient.setQueryData(queryKey, (prev: { gen: Gen | null; logs: LogRow[] } | undefined) =>
+        prev ? { ...prev, logs: [] } : prev,
+      );
       const { error: fnErr } = await supabase.functions.invoke("orchestrate-generation", {
         body: { generationId },
       });

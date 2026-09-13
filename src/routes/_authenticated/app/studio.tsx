@@ -38,6 +38,8 @@ import {
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
+import { qk } from "@/lib/query-keys";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -296,9 +298,20 @@ function StudioInner() {
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [libraryNodeId, setLibraryNodeId] = useState<string | null>(null);
   const [library, setLibrary] = useState<LibraryAsset[]>([]);
-  const [workflowList, setWorkflowList] = useState<
-    { id: string; name: string; updated_at: string }[]
-  >([]);
+  const queryClient = useQueryClient();
+  const { data: workflowList = [] } = useQuery({
+    queryKey: qk.studioWorkflows(user?.id),
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("studio_workflows")
+        .select("id, name, updated_at")
+        .order("updated_at", { ascending: false })
+        .limit(50);
+      if (error) throw new Error(error.message);
+      return (data ?? []) as { id: string; name: string; updated_at: string }[];
+    },
+  });
   const [confirmDelete, setConfirmDelete] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rfRef = useRef<ReactFlowInstance<any, any> | null>(null);
@@ -623,19 +636,10 @@ function StudioInner() {
     void refreshWorkflowList();
   }, [user, nodes, edges, workflowName, workflowId]);
 
-  const refreshWorkflowList = useCallback(async () => {
-    if (!user) return;
-    const { data } = await supabase
-      .from("studio_workflows")
-      .select("id, name, updated_at")
-      .order("updated_at", { ascending: false })
-      .limit(50);
-    setWorkflowList(data ?? []);
-  }, [user]);
-
-  useEffect(() => {
-    void refreshWorkflowList();
-  }, [refreshWorkflowList]);
+  const refreshWorkflowList = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: qk.studioWorkflows(user?.id) }),
+    [queryClient, user?.id],
+  );
 
   const loadWorkflow = useCallback(
     async (id: string) => {

@@ -11,11 +11,13 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 import { RefinePromptDialog } from "@/components/gerar/RefinePromptDialog";
 import { pollGenerationStatus } from "@/lib/poll-generation";
+import { qk } from "@/lib/query-keys";
 import type { TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 
 type GerarSearch = { from?: string };
@@ -122,52 +124,65 @@ function GerarPage() {
 
   // Carrega geração de origem quando ?from=<id>
   const loadedFromRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!user || !from || loadedFromRef.current === from) return;
-    loadedFromRef.current = from;
-    void (async () => {
+  const { data: sourceGeneration, error: sourceError } = useQuery({
+    queryKey: qk.generation(from ?? ""),
+    enabled: !!user && !!from,
+    queryFn: async () => {
       const { data, error } = await supabase
         .from("generations")
         .select("id,pipeline_type,engine,source_images,context_image_url,prompt,edit_instruction")
-        .eq("id", from)
+        .eq("id", from!)
         .maybeSingle();
-      if (error || !data) {
-        toast.error("Não foi possível carregar a geração de origem");
-        navigate({ to: "/app/gerar", search: {} } as never);
-        return;
-      }
-      const pt = data.pipeline_type as string;
-      // Pipelines descontinuados: cai para o recomendado
-      if (pt !== "direct" && pt !== "enriched" && pt !== "edit" && pt !== "text_to_3d") {
-        toast.info("Este modo foi descontinuado — usando Enriquecido");
-        setPipelineId("enriched");
-      } else {
-        setPipelineId(pt as PipelineId);
-      }
-      if (data.engine === "hunyuan_2_1" || data.engine === "hunyuan_3_1") {
-        setEngine(data.engine);
-      }
-      const srcs = Array.isArray(data.source_images)
-        ? (data.source_images as unknown[]).filter((x): x is string => typeof x === "string")
-        : [];
-      setReusedFrom({
-        id: data.id,
-        sourceImages: srcs,
-        contextImageUrl: (data.context_image_url as string | null) ?? null,
-        pipelineLabel: PIPELINES.find((p) => p.id === pt)?.title ?? pt,
-      });
-      const promptStr = (data.prompt as string | null) ?? "";
-      if (pt === "text_to_3d") {
-        setTextPrompt(promptStr);
-      } else if (pt === "edit") {
-        setEditPrompt((data.edit_instruction as string | null) ?? "");
-        setInstruction(promptStr);
-      } else {
-        setInstruction(promptStr);
-      }
-      toast.success("Geração carregada — ajuste e gere de novo");
-    })();
-  }, [user, from, navigate]);
+      if (error) throw new Error(error.message);
+      return data;
+    },
+  });
+
+  useEffect(() => {
+    if (sourceError || (sourceGeneration === null && from)) {
+      toast.error("Não foi possível carregar a geração de origem");
+      navigate({ to: "/app/gerar", search: {} } as never);
+    }
+  }, [sourceError, sourceGeneration, from, navigate]);
+
+  // Semeia o formulário uma vez por `from`; o ref impede que uma revalidação
+  // sobrescreva o que o usuário já ajustou na tela.
+  useEffect(() => {
+    const data = sourceGeneration;
+    if (!data || !from || loadedFromRef.current === from) return;
+    loadedFromRef.current = from;
+
+    const pt = data.pipeline_type as string;
+    // Pipelines descontinuados: cai para o recomendado
+    if (pt !== "direct" && pt !== "enriched" && pt !== "edit" && pt !== "text_to_3d") {
+      toast.info("Este modo foi descontinuado — usando Enriquecido");
+      setPipelineId("enriched");
+    } else {
+      setPipelineId(pt as PipelineId);
+    }
+    if (data.engine === "hunyuan_2_1" || data.engine === "hunyuan_3_1") {
+      setEngine(data.engine);
+    }
+    const srcs = Array.isArray(data.source_images)
+      ? (data.source_images as unknown[]).filter((x): x is string => typeof x === "string")
+      : [];
+    setReusedFrom({
+      id: data.id,
+      sourceImages: srcs,
+      contextImageUrl: (data.context_image_url as string | null) ?? null,
+      pipelineLabel: PIPELINES.find((p) => p.id === pt)?.title ?? pt,
+    });
+    const promptStr = (data.prompt as string | null) ?? "";
+    if (pt === "text_to_3d") {
+      setTextPrompt(promptStr);
+    } else if (pt === "edit") {
+      setEditPrompt((data.edit_instruction as string | null) ?? "");
+      setInstruction(promptStr);
+    } else {
+      setInstruction(promptStr);
+    }
+    toast.success("Geração carregada — ajuste e gere de novo");
+  }, [sourceGeneration, from]);
 
   const clearReused = () => {
     setReusedFrom(null);
