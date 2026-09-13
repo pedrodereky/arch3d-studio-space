@@ -13,7 +13,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { qk } from "@/lib/query-keys";
-import { navSections, adminItems, type NavLeaf } from "@/lib/nav-items";
+import { ALL_SCREENS, adminItems, type NavLeaf } from "@/lib/nav-items";
 import { PIPELINE_LABEL, pipelineLabel, type PipelineType } from "@/lib/pipeline-labels";
 
 type Props = { open: boolean; onOpenChange: (open: boolean) => void; isAdmin: boolean };
@@ -127,7 +127,10 @@ export function GlobalSearch({ open, onOpenChange, isAdmin }: Props) {
   });
 
   const destinations = useMemo(() => {
-    const all = [...navSections.flatMap((s) => s.items), ...(isAdmin ? adminItems : [])];
+    // ALL_SCREENS e não navSections: a barra lateral agrupa três telas sob
+    // "Plantas", mas a busca tem de achar cada uma pelo nome próprio.
+    const adminPaths = new Set(adminItems.map((i) => i.to));
+    const all = ALL_SCREENS.filter((i) => isAdmin || !adminPaths.has(i.to));
     if (!clean) return all;
     const q = clean.toLowerCase();
     return all.filter((d) => d.label.toLowerCase().includes(q));

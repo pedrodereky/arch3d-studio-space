@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth-context";
 import { pdfFirstPageToJpeg } from "@/lib/pdf-to-image";
 import { VisionAnalysisSheet } from "@/features/briefing/VisionAnalysisSheet";
 import type { FloorplanAnalysis } from "@/features/briefing/types";
+import { PlantasTabs } from "@/components/gerar/PlantasTabs";
 
 export const Route = createFileRoute("/_authenticated/app/gerar/analise")({
   component: AnalisePage,
@@ -204,13 +205,11 @@ function AnalisePage() {
   return (
     <div className="mx-auto max-w-6xl">
       <header className="mb-8">
-        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-          Análise
-        </p>
-        <h1 className="mt-2 text-4xl font-black tracking-tight text-foreground">
+        <PlantasTabs className="mb-6" />
+        <h1 className="text-[30px] font-black leading-[1.1] tracking-tight text-foreground">
           Análise de planta existente
         </h1>
-        <p className="mt-3 max-w-2xl font-light text-muted-foreground">
+        <p className="mt-2 max-w-2xl font-light text-muted-foreground">
           Suba uma planta baixa (imagem ou PDF) e a IA devolve cômodos, áreas e validação NBR 9050.
         </p>
       </header>
