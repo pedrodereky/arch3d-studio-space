@@ -116,9 +116,23 @@ essa chamada interna.
 ## Cron de gerações travadas
 
 A rota `/api/cron/stuck-generations` (em `src/routes/api/cron/`) chama
-`mark_stuck_generations_failed`. Ela existe mas **não se agenda sozinha**:
-cadastre um schedule apontando para ela, de hora em hora ou diário, com o
-header `Authorization: Bearer $LOVABLE_CRON_SECRET`. É idempotente.
+`mark_stuck_generations_failed`. Ela existe mas **não se agenda sozinha**.
+
+Na Lovable o agendador se chama **Jobs**, e é criado dentro do produto — não
+por arquivo neste repositório. Duas formas:
+
+- Pedir no chat do projeto, por exemplo: _"Agende um job que chame
+  `/api/cron/stuck-generations` de hora em hora."_
+- Ou conferir e gerenciar em **Cloud → Jobs**, onde cada job aparece com o
+  horário em texto ("A cada hora", "Todo dia às 08:00").
+
+A autenticação já está pronta dos dois lados: a rota valida o header
+`Authorization: Bearer $LOVABLE_CRON_SECRET` via `authenticateCronRequest`
+(`src/integrations/supabase/cron-auth.ts`, gerado pela própria Lovable). De
+hora em hora ou diário, tanto faz — a rota é idempotente.
+
+Para conferir depois de agendar: uma chamada sem o header devolve 401, e uma
+bem-sucedida responde `{"ok":true,"markedFailed":N}`.
 
 Sem esse agendamento, uma geração que morre no meio do pipeline fica em
 `processing` para sempre na biblioteca do usuário.
