@@ -32,6 +32,14 @@ npx tsc --noEmit
 npm run build
 ```
 
+O `tsconfig` cobre só `src/`. As edge functions rodam em Deno e têm typecheck
+próprio, que a CI também roda:
+
+```sh
+npm install -g deno
+deno check $(find supabase/functions -name '*.ts')
+```
+
 ### Lockfiles
 
 O repositório carrega dois, e nenhum serve para uma instalação reproduzível

@@ -41,3 +41,20 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      # As edge functions rodam em Deno e ficam fora do `include` do tsconfig —
+      # nada acima as cobre. Este é o único typecheck que elas têm. Instalar via
+      # npm evita depender de uma action de terceiros.
+      - name: Instalar Deno
+        run: npm install -g deno
+
+      - name: Cache de dependências Deno
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/deno
+          key: deno-${{ hashFiles('supabase/functions/**/*.ts') }}
+          restore-keys: deno-
+
+      # `find` em vez de glob `**`: o shell da action não tem globstar ligado.
+      - name: Typecheck das edge functions (Deno)
+        run: deno check $(find supabase/functions -name '*.ts')

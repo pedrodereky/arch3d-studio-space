@@ -16,6 +16,9 @@ procedimento é o abaixo; rode uma vez e commite o resultado.
 
 ### Como exportar
 
+Precisa rodar numa máquina que alcance o projeto Supabase — sessões de agente
+e o runner da CI não alcançam.
+
 ```sh
 # 1. CLI do Supabase (uma vez)
 npm install -g supabase
@@ -27,9 +30,17 @@ supabase link --project-ref edikojlhcttxbeskmehe
 # 3. Puxar o schema atual como migration inicial
 supabase db pull
 
-# 4. Conferir o que veio antes de commitar
-git diff --stat supabase/migrations/
+# 4. Conferir se o dump veio completo
+npm run db:check
 ```
+
+`npm run db:check` compara o SQL gerado com o inventário que o `types.ts` já
+conhece — as 12 tabelas, os 4 enums e as 6 funções — e falha se algo esperado
+não aparecer ou se o dump vier sem nenhuma policy de RLS. Sem argumento ele
+pega a migration mais recente; aceita um caminho se preferir.
+
+Ele confere **presença, não corretude**: dizer que as políticas vieram não é o
+mesmo que dizer que elas estão certas. Revise-as você mesmo.
 
 `supabase db pull` gera a migration a partir do banco remoto. Depois dela, toda
 mudança de schema deve nascer como migration (`supabase migration new <nome>`)
@@ -116,9 +127,23 @@ essa chamada interna.
 ## Cron de gerações travadas
 
 A rota `/api/cron/stuck-generations` (em `src/routes/api/cron/`) chama
-`mark_stuck_generations_failed`. Ela existe mas **não se agenda sozinha**:
-cadastre um schedule apontando para ela, de hora em hora ou diário, com o
-header `Authorization: Bearer $LOVABLE_CRON_SECRET`. É idempotente.
+`mark_stuck_generations_failed`. Ela existe mas **não se agenda sozinha**.
+
+Na Lovable o agendador se chama **Jobs**, e é criado dentro do produto — não
+por arquivo neste repositório. Duas formas:
+
+- Pedir no chat do projeto, por exemplo: _"Agende um job que chame
+  `/api/cron/stuck-generations` de hora em hora."_
+- Ou conferir e gerenciar em **Cloud → Jobs**, onde cada job aparece com o
+  horário em texto ("A cada hora", "Todo dia às 08:00").
+
+A autenticação já está pronta dos dois lados: a rota valida o header
+`Authorization: Bearer $LOVABLE_CRON_SECRET` via `authenticateCronRequest`
+(`src/integrations/supabase/cron-auth.ts`, gerado pela própria Lovable). De
+hora em hora ou diário, tanto faz — a rota é idempotente.
+
+Para conferir depois de agendar: uma chamada sem o header devolve 401, e uma
+bem-sucedida responde `{"ok":true,"markedFailed":N}`.
 
 Sem esse agendamento, uma geração que morre no meio do pipeline fica em
 `processing` para sempre na biblioteca do usuário.
