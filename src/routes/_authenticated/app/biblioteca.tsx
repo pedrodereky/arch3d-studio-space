@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ModelViewer } from "@/components/library/ModelViewer";
 import { FreshImg, FreshVideo, FreshLink } from "@/components/library/FreshMedia";
+import { pipelineLabel } from "@/lib/pipeline-labels";
 
 type BibliotecaSearch = { destacar?: string };
 
@@ -68,18 +69,10 @@ type GenRow = {
 
 type Filter = "all" | "succeeded" | "processing" | "failed";
 
-const PIPELINE_LABEL: Record<string, string> = {
-  direct: "Direto",
-  enriched: "Enriquecido",
-  edit: "Edita antes",
-  in_scene: "Ver no projeto",
-  text_to_3d: "Texto para 3D",
-  floorplan: "Planta para 3D (descontinuado)",
-  scene_to_3d: "Cena para 3D (descontinuado)",
-  floorplan_render: "Planta → Render 3D",
-  render_to_video: "Render → Vídeo POV",
-  redecorate: "Redecoração",
-};
+const PAGE_SIZE = 60;
+
+const SELECT_COLUMNS =
+  "id,status,pipeline_type,thumbnail_url,final_render_url,video_url,intermediate_images,glb_url,obj_url,fbx_url,source_images,prompt,error_message,is_public,created_at,completed_at,cost_usd,metadata";
 
 type Variation = { url: string; path?: string; seed?: number };
 
@@ -108,26 +101,49 @@ function BibliotecaPage() {
   const [query, setQuery] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
   const [openVariant, setOpenVariant] = useState<number | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
     if (!user) return;
     void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  async function load() {
-    const { data, error } = await supabase
+  function selectPage(from: number, to: number) {
+    return supabase
       .from("generations")
-      .select(
-        "id,status,pipeline_type,thumbnail_url,final_render_url,video_url,intermediate_images,glb_url,obj_url,fbx_url,source_images,prompt,error_message,is_public,created_at,completed_at,cost_usd,metadata",
-      )
+      .select(SELECT_COLUMNS)
       .order("created_at", { ascending: false })
-      .limit(200);
+      .range(from, to);
+  }
+
+  /** Rebusca a janela já carregada, preservando a posição de quem paginou. */
+  async function load() {
+    const size = Math.max(items?.length ?? 0, PAGE_SIZE);
+    const { data, error } = await selectPage(0, size - 1);
     if (error) {
       toast.error("Erro ao carregar biblioteca", { description: error.message });
       setItems([]);
       return;
     }
-    setItems((data ?? []) as GenRow[]);
+    const rows = (data ?? []) as GenRow[];
+    setItems(rows);
+    setHasMore(rows.length >= size);
+  }
+
+  async function loadMore() {
+    if (!items || loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    const { data, error } = await selectPage(items.length, items.length + PAGE_SIZE - 1);
+    setLoadingMore(false);
+    if (error) {
+      toast.error("Erro ao carregar mais", { description: error.message });
+      return;
+    }
+    const rows = (data ?? []) as GenRow[];
+    setItems((prev) => [...(prev ?? []), ...rows]);
+    setHasMore(rows.length === PAGE_SIZE);
   }
 
   useEffect(() => {
@@ -137,8 +153,26 @@ function BibliotecaPage() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "generations", filter: `user_id=eq.${user.id}` },
-        () => {
-          void load();
+        (payload) => {
+          // Antes qualquer evento rebuscava a lista inteira — durante um lote de
+          // gerações isso era uma query por evento. Agora a linha é aplicada no
+          // estado direto do payload.
+          if (payload.eventType === "DELETE") {
+            const gone = payload.old as { id?: string };
+            if (!gone?.id) return;
+            setItems((prev) => prev?.filter((it) => it.id !== gone.id) ?? prev);
+            return;
+          }
+          const row = payload.new as GenRow;
+          if (!row?.id) return;
+          setItems((prev) => {
+            if (!prev) return prev;
+            const idx = prev.findIndex((it) => it.id === row.id);
+            if (idx === -1) return [row, ...prev];
+            const next = [...prev];
+            next[idx] = { ...next[idx], ...row };
+            return next;
+          });
         },
       )
       .subscribe();
@@ -169,7 +203,7 @@ function BibliotecaPage() {
         const q = query.toLowerCase();
         if (
           !(it.prompt ?? "").toLowerCase().includes(q) &&
-          !(PIPELINE_LABEL[it.pipeline_type] ?? "").toLowerCase().includes(q)
+          !pipelineLabel(it.pipeline_type).toLowerCase().includes(q)
         )
           return false;
       }
@@ -283,6 +317,29 @@ function BibliotecaPage() {
             ))}
           </div>
         )}
+
+        {items && items.length > 0 && (
+          <div className="mt-8 flex flex-col items-center gap-2">
+            {hasMore ? (
+              <button
+                type="button"
+                onClick={() => void loadMore()}
+                disabled={loadingMore}
+                className="inline-flex h-11 items-center gap-2 rounded-full border border-border bg-card px-6 text-[11px] font-black uppercase tracking-[0.12em] text-foreground transition-colors hover:border-accent disabled:opacity-50"
+              >
+                {loadingMore && <Loader2 className="h-4 w-4 animate-spin" />}
+                Carregar mais
+              </button>
+            ) : (
+              <p className="text-xs font-light text-muted-foreground">
+                Fim da biblioteca — {items.length} {items.length === 1 ? "geração" : "gerações"}.
+              </p>
+            )}
+            <p className="text-[11px] font-light text-muted-foreground">
+              Filtros e busca se aplicam às gerações já carregadas.
+            </p>
+          </div>
+        )}
       </div>
 
       <Sheet
@@ -392,7 +449,7 @@ function Card({
         </div>
         <div className="flex flex-col gap-1 p-4">
           <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-            {PIPELINE_LABEL[gen.pipeline_type] ?? gen.pipeline_type}
+            {pipelineLabel(gen.pipeline_type)}
           </p>
           <p className="line-clamp-2 text-sm font-light text-foreground">
             {gen.prompt?.trim() || "Sem descrição"}
@@ -510,7 +567,7 @@ function DetailPanel({
     <div className="flex flex-col gap-6">
       <SheetHeader>
         <SheetTitle className="text-2xl font-black tracking-tight">
-          {PIPELINE_LABEL[gen.pipeline_type] ?? gen.pipeline_type}
+          {pipelineLabel(gen.pipeline_type)}
           {activeVariant && (
             <span className="ml-2 text-sm font-light text-muted-foreground">
               · Variação {(selectedVariant ?? 0) + 1}/{variations.length}
