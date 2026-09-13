@@ -1,10 +1,14 @@
 // Studio: a partir de um nó concluído, dispara uma ação
-// (salvar na biblioteca, gerar 3D da cena, gerar vídeo POV ou
-//  gerar 3D individual de móveis selecionados).
+// (salvar na biblioteca, gerar vídeo POV ou gerar 3D individual
+//  de móveis selecionados).
+//
+// A ação "scene_to_3d" foi removida: o pipeline de mesmo nome está
+// descontinuado no orchestrate, que falha a geração assim que a recebe. Um body
+// com ela agora cai em "ação desconhecida" (400).
 //
 // POST body: {
 //   runId, nodeId,
-//   action: "save_only" | "scene_to_3d" | "render_to_video" | "furniture_individual",
+//   action: "save_only" | "render_to_video" | "furniture_individual",
 //   videoParams?: { cameraMode, prompt },
 //   furniture?: Array<{ prompt: string; type: string; isolation_prompt: string }>
 // }
@@ -26,7 +30,7 @@ const admin = createClient(SUPABASE_URL, SERVICE_ROLE, {
 type Body = {
   runId: string;
   nodeId: string;
-  action: "save_only" | "scene_to_3d" | "render_to_video" | "furniture_individual";
+  action: "save_only" | "render_to_video" | "furniture_individual";
   videoParams?: { cameraMode?: string; prompt?: string };
   furniture?: Array<{ prompt: string; type: string; isolation_prompt: string }>;
 };
@@ -150,28 +154,6 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true, generationIds: [id] }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
-    }
-
-    if (body.action === "scene_to_3d") {
-      const id = await insertGeneration({
-        user_id: userId,
-        pipeline_type: "scene_to_3d",
-        engine: "hunyuan_2_1",
-        status: "queued",
-        source_images: [freshUrl],
-        context_image_url: freshUrl,
-        prompt: inheritedPrompt,
-        metadata: { studio_origin: studioOrigin },
-      });
-      const kickoffError = await invokeOrchestrate(id, authHeader);
-      return new Response(
-        JSON.stringify({
-          ok: !kickoffError,
-          generationIds: [id],
-          ...(kickoffError ? { error: kickoffError } : {}),
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
     }
 
     if (body.action === "render_to_video") {
