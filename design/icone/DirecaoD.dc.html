@@ -1,0 +1,103 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mulish:wght@300;400;600;900&display=swap">
+  <style>
+    body { margin:0; font-family:'Avenir LT Std','Avenir Next',Avenir,'Mulish','Helvetica Neue',sans-serif; -webkit-font-smoothing:antialiased; }
+    a { color:#0A4F95; text-decoration:none; } a:hover { color:#02162A; }
+    .lbl { font-size:10px; font-weight:900; letter-spacing:.18em; text-transform:uppercase; color:#6B7A8D; }
+    .card { border-radius:20px; background:#FFFFFF; box-shadow:0 1px 3px rgba(2,22,42,.08), 0 4px 16px rgba(2,22,42,.06); }
+    .cap { font-size:10.5px; color:#6B7A8D; text-align:center; }
+  </style>
+</helmet>
+
+<div style="width:560px; height:820px; background:#F9F9F9; color:#02162A; padding:36px; box-sizing:border-box; display:flex; flex-direction:column; gap:24px;">
+
+  <svg width="0" height="0" style="position:absolute;" aria-hidden="true"><defs>
+    <symbol id="mk" viewBox="0 0 64 64">
+      <path d="M8 8 L56 8 L40 24 L24 24 Z" fill="currentColor"/>
+      <path d="M56 8 L56 56 L40 40 L40 24 Z" fill="currentColor" opacity=".64"/>
+      <path d="M56 56 L8 56 L24 40 L40 40 Z" fill="currentColor"/>
+      <path d="M8 8 L24 24 L24 40 L8 56 Z" fill="currentColor" opacity=".64"/>
+      <rect x="24" y="24" width="16" height="16" fill="var(--accent, #0A4F95)"/>
+    </symbol>
+  </defs></svg>
+
+  <header>
+    <span class="lbl">Direção D</span>
+    <h1 style="margin:8px 0 0; font-size:26px; font-weight:900; letter-spacing:-.02em;">Ponto de fuga</h1>
+    <p style="margin:8px 0 0; font-size:13px; font-weight:300; color:#6B7A8D; line-height:1.55; text-wrap:pretty;">
+      Um cômodo em perspectiva de um ponto: quatro paredes convergindo para o fundo.
+      É como o arquiteto desenha antes de qualquer software existir.
+    </p>
+  </header>
+
+  <div class="card" style="padding:28px; display:flex; align-items:center; justify-content:center;">
+    <div style="color:#02162A; --accent:#0A4F95; line-height:0;">
+      <svg width="196" height="196"><use href="#mk"/></svg>
+    </div>
+  </div>
+
+  <div>
+    <span class="lbl">Tamanho real</span>
+    <div class="card" style="margin-top:10px; padding:20px 24px; display:flex; align-items:flex-end; gap:34px;">
+      <div style="display:flex; flex-direction:column; align-items:center; gap:8px; color:#02162A; --accent:#0A4F95;">
+        <svg width="64" height="64"><use href="#mk"/></svg><span class="cap">64</span>
+      </div>
+      <div style="display:flex; flex-direction:column; align-items:center; gap:8px; color:#02162A; --accent:#0A4F95;">
+        <svg width="32" height="32"><use href="#mk"/></svg><span class="cap">32</span>
+      </div>
+      <div style="display:flex; flex-direction:column; align-items:center; gap:8px; color:#02162A; --accent:#0A4F95;">
+        <svg width="16" height="16"><use href="#mk"/></svg><span class="cap">16</span>
+      </div>
+      <p style="margin:0 0 2px; font-size:11px; font-weight:300; color:#6B7A8D; line-height:1.5; flex:1; text-wrap:pretty;">
+        Aos 16&nbsp;px vira um quadrado com miolo azul — perde a perspectiva, mantém a marca.
+      </p>
+    </div>
+  </div>
+
+  <div>
+    <span class="lbl">Em uso</span>
+    <div style="display:flex; gap:14px; margin-top:10px;">
+      <div style="flex:1; border-radius:12px; overflow:hidden; background:#E4E7EB; padding:10px 10px 0;">
+        <div style="background:#FFFFFF; border-radius:8px 8px 0 0; padding:9px 11px; display:flex; align-items:center; gap:8px;">
+          <span style="line-height:0; color:#02162A; --accent:#0A4F95;"><svg width="16" height="16"><use href="#mk"/></svg></span>
+          <span style="font-size:11.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Arq3D Studio</span>
+        </div>
+      </div>
+      <div style="flex:1; border-radius:12px; overflow:hidden; border:1px solid rgba(2,22,42,.08); background:#FFFFFF;">
+        <div style="height:60px; display:flex; align-items:center; gap:9px; padding:0 16px; border-bottom:1px solid rgba(2,22,42,.08);">
+          <span style="line-height:0; color:#02162A; --accent:#0A4F95;"><svg width="22" height="22"><use href="#mk"/></svg></span>
+          <span style="font-size:11px; font-weight:900; letter-spacing:.22em;">ARQ3D</span>
+        </div>
+        <div style="height:22px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <span class="lbl">Fundos</span>
+    <div style="display:flex; gap:14px; margin-top:10px;">
+      <div style="flex:1; height:112px; border-radius:12px; background:#02162A; display:flex; align-items:center; justify-content:center;">
+        <span style="line-height:0; color:#FFFFFF; --accent:#7FA8D4;"><svg width="60" height="60"><use href="#mk"/></svg></span>
+      </div>
+      <div style="flex:1; height:112px; border-radius:12px; background:#FFFFFF; border:1px solid rgba(2,22,42,.08); display:flex; align-items:center; justify-content:center;">
+        <span style="line-height:0; color:#02162A; --accent:#0A4F95;"><svg width="60" height="60"><use href="#mk"/></svg></span>
+      </div>
+    </div>
+  </div>
+
+  <p style="margin:auto 0 0; font-size:11.5px; font-weight:300; color:#6B7A8D; line-height:1.6; text-wrap:pretty;">
+    <strong style="font-weight:600; color:#02162A;">A favor:</strong> é o mais distinto dos quatro. Ninguém no setor usa isto.
+    <br><strong style="font-weight:600; color:#02162A;">Contra:</strong> é o mais abstrato: sem o contexto do nome, pode ler como moldura ou ícone de foto.
+  </p>
+</div>
+</x-dc>
+</body>
+</html>
