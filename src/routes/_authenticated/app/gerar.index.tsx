@@ -9,6 +9,8 @@ import { RefinePromptDialog } from "@/components/gerar/RefinePromptDialog";
 import { pollGenerationStatus } from "@/lib/poll-generation";
 import { qk } from "@/lib/query-keys";
 import type { TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
+import { usePipelineCosts, formatUsd } from "@/lib/pipeline-costs";
+import type { PipelineType } from "@/lib/pipeline-labels";
 
 type GerarSearch = { from?: string };
 
@@ -32,9 +34,10 @@ type Pipeline = {
 type EngineId = "hunyuan_2_1" | "hunyuan_3_1";
 
 /**
- * Custo por geração, em dólar. Só existe número publicado para o motor de
- * imagem — é o mesmo que a tela do motor já mostrava. `null` significa "não
- * temos estimativa", e a tela diz isso em vez de inventar um número.
+ * Fallback de custo, em dólar, para quem ainda não gerou nada nesse pipeline.
+ * É o único número publicado no produto — o mesmo que a tela do motor já
+ * mostrava. Assim que houver histórico, a mediana real do usuário manda.
+ * `null` significa "não temos estimativa", e a tela diz isso.
  */
 const ENGINE_COST_USD: Record<EngineId, number | null> = {
   hunyuan_2_1: 0.05,
@@ -108,9 +111,21 @@ function GerarPage() {
   const [progressGenId, setProgressGenId] = useState<string | null>(null);
   const [refineOpen, setRefineOpen] = useState(false);
 
+  const { data: pipelineCosts } = usePipelineCosts(user?.id);
   const pipeline = PIPELINES.find((p) => p.id === pipelineId)!;
   const isTextPipeline = pipelineId === "text_to_3d";
   const effectiveEngine: EngineId = isTextPipeline ? "hunyuan_3_1" : engine;
+
+  // O que ESTE usuário pagou neste pipeline ganha do número tabelado. Só cai
+  // no fallback quem ainda não tem histórico — e aí a tela avisa que é uma
+  // referência, não uma medição.
+  const measured = pipelineCosts?.[pipelineId as PipelineType];
+  const costValue = measured?.median ?? ENGINE_COST_USD[effectiveEngine];
+  const costHint = measured
+    ? `mediana de ${measured.samples} ${measured.samples === 1 ? "geração sua" : "gerações suas"}`
+    : costValue !== null
+      ? "referência do motor"
+      : null;
 
   const hasReusedSource = (reusedFrom?.sourceImages.length ?? 0) > 0;
   const primarySatisfied = !!primary || hasReusedSource;
@@ -415,10 +430,7 @@ function GerarPage() {
           >
             <SummaryRow label="Tempo estimado" value={`~${pipeline.estSeconds} s`} />
             <div className="my-3.5 h-px bg-border/60" />
-            <SummaryRow
-              label="Custo estimado"
-              value={formatCost(ENGINE_COST_USD[effectiveEngine])}
-            />
+            <SummaryRow label="Custo estimado" value={formatUsd(costValue)} hint={costHint} />
 
             {isTextPipeline && (
               <button
@@ -561,19 +573,24 @@ function PipelineCard({
   );
 }
 
-function SummaryRow({ label, value }: { label: string; value: string }) {
+function SummaryRow({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string;
+  hint?: string | null;
+}) {
   return (
     <div className="flex items-baseline justify-between gap-3">
-      <span className="text-[12px] font-light text-muted-foreground">{label}</span>
-      <span className="text-[13px] font-semibold text-foreground">{value}</span>
+      <span className="min-w-0 text-[12px] font-light text-muted-foreground">
+        {label}
+        {hint && <span className="ml-1.5 text-[11px] opacity-70">({hint})</span>}
+      </span>
+      <span className="shrink-0 text-[13px] font-semibold text-foreground">{value}</span>
     </div>
   );
-}
-
-/** Sem número publicado o traço é honesto; um "$ 0,00" não seria. */
-function formatCost(usd: number | null): string {
-  if (usd === null) return "—";
-  return `$ ${usd.toFixed(2).replace(".", ",")}`;
 }
 
 /* ============== FORMS ============== */

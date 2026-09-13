@@ -1,6 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ShieldCheck, KeyRound, Cpu, ExternalLink } from "lucide-react";
+import { ShieldCheck, KeyRound, Cpu, ExternalLink, Receipt, Loader2 } from "lucide-react";
 import { AI_PROVIDERS, PROVIDER_BY_ID, stepsByFeature } from "@/lib/ai-transparency";
+import { usePipelineCosts, formatUsd } from "@/lib/pipeline-costs";
+import { pipelineLabel } from "@/lib/pipeline-labels";
+import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/_authenticated/app/transparencia")({
   component: TransparenciaPage,
@@ -8,11 +11,20 @@ export const Route = createFileRoute("/_authenticated/app/transparencia")({
 
 function TransparenciaPage() {
   const groups = stepsByFeature();
+  const { user } = useAuth();
+  const { data: costs, isPending: costsPending } = usePipelineCosts(user?.id);
+
+  // Ordena pelo que pesa mais na conta: a pergunta é "o que está me custando".
+  const costRows = Object.entries(costs ?? {})
+    .map(([pipeline, c]) => ({ pipeline, ...c! }))
+    .sort((a, b) => b.median * b.samples - a.median * a.samples);
 
   return (
     <div className="mx-auto max-w-[1100px] space-y-10">
       <header>
-        <h1 className="text-3xl font-black tracking-tight text-foreground">Transparência de IA</h1>
+        <h1 className="text-[30px] font-black leading-[1.1] tracking-tight text-foreground">
+          Transparência de IA
+        </h1>
         <p className="mt-2 max-w-2xl font-light text-muted-foreground">
           Como o Arq3D Studio usa inteligência artificial: quais provedores são chamados, qual
           credencial autoriza cada chamada e qual modelo roda em cada etapa de cada recurso.
@@ -130,6 +142,60 @@ function TransparenciaPage() {
             </div>
           ))}
         </div>
+      </section>
+
+      {/* Custo por pipeline */}
+      <section>
+        <div className="flex items-center gap-3">
+          <Receipt className="h-5 w-5 text-foreground" strokeWidth={1.75} />
+          <h2 className="text-xl font-black tracking-tight text-foreground">Custo por pipeline</h2>
+        </div>
+        <p className="mt-2 max-w-2xl font-light text-muted-foreground">
+          Medido, não tabelado: é a mediana do que{" "}
+          <strong className="font-semibold text-foreground">você</strong> já pagou em cada pipeline,
+          nas suas últimas gerações bem-sucedidas. Não há preço fixo — o custo real varia com o
+          modelo, o tamanho da entrada e o que o provedor cobrou no dia.
+        </p>
+
+        <div
+          className="mt-5 overflow-hidden rounded-xl border border-border/60 bg-card"
+          style={{ boxShadow: "var(--via-shadow-card)" }}
+        >
+          {costsPending ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : costRows.length === 0 ? (
+            <p className="px-5 py-10 text-center text-sm font-light text-muted-foreground">
+              Nenhuma geração cobrada ainda. Assim que você gerar, o custo medido aparece aqui.
+            </p>
+          ) : (
+            <ul>
+              {costRows.map((r) => (
+                <li
+                  key={r.pipeline}
+                  className="flex items-baseline justify-between gap-4 border-b border-border/60 px-5 py-4 last:border-b-0"
+                >
+                  <span className="min-w-0 truncate text-sm font-medium text-foreground">
+                    {pipelineLabel(r.pipeline)}
+                  </span>
+                  <span className="flex shrink-0 items-baseline gap-3">
+                    <span className="text-[11px] font-light text-muted-foreground">
+                      {r.samples} {r.samples === 1 ? "geração" : "gerações"}
+                    </span>
+                    <span className="text-sm font-semibold tabular-nums text-foreground">
+                      {formatUsd(r.median)}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <p className="mt-2.5 text-[11px] font-light text-muted-foreground">
+          Amostra: até 500 gerações mais recentes. Mediana, não média — uma geração que estourou por
+          retry envenenaria a média.
+        </p>
       </section>
 
       {/* Garantias */}
