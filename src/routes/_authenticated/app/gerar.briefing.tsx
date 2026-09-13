@@ -13,8 +13,11 @@ import {
   type FloorplanAnalysis,
 } from "@/features/briefing/types";
 import { pollGenerationStatus } from "@/lib/poll-generation";
+import { PlantasTabs } from "@/components/gerar/PlantasTabs";
 
 export const Route = createFileRoute("/_authenticated/app/gerar/briefing")({
+  // Formulário e resultados dividem a tela de borda a borda.
+  staticData: { fullBleed: true },
   component: BriefingPage,
 });
 
@@ -116,8 +119,13 @@ function BriefingPage() {
   };
 
   return (
-    <div className="-mx-6 -my-6 h-[calc(100vh-4rem)] md:-mx-8 md:-my-8">
-      <div className="grid h-full grid-cols-[minmax(320px,400px)_1fr]">
+    // Altura definida de propósito: os dois painéis rolam por conta própria
+    // (`h-full` + `overflow-y-auto`), o que exige que a linha tenha altura.
+    <div className="flex h-[calc(100vh-76px)] flex-col">
+      <div className="shrink-0 border-b border-border/60 bg-card px-4 py-3 md:px-10">
+        <PlantasTabs />
+      </div>
+      <div className="grid min-h-0 flex-1 grid-cols-[minmax(320px,400px)_1fr]">
         <BriefingForm
           value={briefing}
           onChange={setBriefing}
