@@ -1,8 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { FolderOpen, Plus, Loader2, Calendar, User as UserIcon } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { qk } from "@/lib/query-keys";
 import { useAuth } from "@/lib/auth-context";
 import {
   Dialog,
@@ -27,38 +29,39 @@ type ProjectRow = {
 
 function ProjetosPage() {
   const { user } = useAuth();
-  const [projects, setProjects] = useState<ProjectRow[]>([]);
-  const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
+  const queryClient = useQueryClient();
 
-  async function load() {
-    if (!user) return;
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("projects")
-      .select("id, name, client_name, deadline, created_at, project_assets(generation_id)")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
-    setLoading(false);
-    if (error) {
-      toast.error("Erro ao carregar projetos: " + error.message);
-      return;
-    }
-    setProjects(
-      (data ?? []).map((p) => ({
+  const {
+    data: projects = [],
+    isPending,
+    error,
+  } = useQuery({
+    queryKey: qk.projectsList(user?.id),
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error: queryError } = await supabase
+        .from("projects")
+        .select("id, name, client_name, deadline, created_at, project_assets(generation_id)")
+        .eq("user_id", user!.id)
+        .order("created_at", { ascending: false });
+      if (queryError) throw new Error(queryError.message);
+      return (data ?? []).map((p) => ({
         id: p.id,
         name: p.name,
         client_name: p.client_name,
         deadline: p.deadline,
         created_at: p.created_at,
         asset_count: Array.isArray(p.project_assets) ? p.project_assets.length : 0,
-      })),
-    );
-  }
+      })) as ProjectRow[];
+    },
+  });
+
+  const loading = isPending && !!user;
 
   useEffect(() => {
-    void load();
-  }, [user]);
+    if (error) toast.error("Erro ao carregar projetos: " + error.message);
+  }, [error]);
 
   return (
     <div className="mx-auto max-w-[1100px] space-y-8">
@@ -127,7 +130,11 @@ function ProjetosPage() {
         </div>
       )}
 
-      <NewProjectDialog open={open} onOpenChange={setOpen} onCreated={() => void load()} />
+      <NewProjectDialog
+        open={open}
+        onOpenChange={setOpen}
+        onCreated={() => void queryClient.invalidateQueries({ queryKey: qk.projects() })}
+      />
     </div>
   );
 }

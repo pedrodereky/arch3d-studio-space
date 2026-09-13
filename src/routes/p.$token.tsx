@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Loader2, Calendar, User as UserIcon, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { qk } from "@/lib/query-keys";
 import { Wordmark } from "@/components/brand/Wordmark";
 import { useFreshUrl } from "@/lib/use-fresh-url";
 
@@ -38,22 +39,25 @@ type SharedProject = {
 
 function SharedProjectPage() {
   const { token } = Route.useParams();
-  const [data, setData] = useState<SharedProject | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
-
-  useEffect(() => {
-    void supabase
-      .rpc("get_shared_project", { _token: token })
-      .then(({ data: result, error }) => {
-        setLoading(false);
-        if (error || !result) {
-          setNotFound(true);
-          return;
-        }
-        setData(result as unknown as SharedProject);
+  const {
+    data,
+    isPending: loading,
+    error,
+  } = useQuery({
+    queryKey: qk.sharedProject(token),
+    // Página pública de leitura: o conteúdo muda pouco e não há sessão para
+    // invalidar, então vale um staleTime mais longo que o padrão.
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data: result, error: rpcError } = await supabase.rpc("get_shared_project", {
+        _token: token,
       });
-  }, [token]);
+      if (rpcError) throw new Error(rpcError.message);
+      return (result as unknown as SharedProject | null) ?? null;
+    },
+  });
+
+  const notFound = !!error || (!loading && !data);
 
   if (loading) {
     return (

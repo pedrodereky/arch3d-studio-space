@@ -1,8 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { qk } from "@/lib/query-keys";
 import { Loader2, ArrowLeft, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import type { TablesUpdate } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/_authenticated/admin/diagnostico/$generationId")({
   component: DiagnosticoDetailPage,
@@ -39,15 +42,15 @@ const eventColor: Record<string, string> = {
 
 function DiagnosticoDetailPage() {
   const { generationId } = Route.useParams();
-  const [gen, setGen] = useState<Gen | null>(null);
-  const [logs, setLogs] = useState<LogRow[]>([]);
-  const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [reprocessing, setReprocessing] = useState(false);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    let alive = true;
-    (async () => {
+  const queryKey = qk.generation(generationId);
+
+  const { data, isPending: loading } = useQuery({
+    queryKey,
+    queryFn: async () => {
       const [g, l] = await Promise.all([
         supabase
           .from("generations")
@@ -60,40 +63,67 @@ function DiagnosticoDetailPage() {
           .eq("generation_id", generationId)
           .order("created_at", { ascending: true }),
       ]);
-      if (!alive) return;
-      setGen((g.data as Gen) ?? null);
-      setLogs((l.data as LogRow[]) ?? []);
-      setLoading(false);
-    })();
+      const failure = g.error ?? l.error;
+      if (failure) throw new Error(failure.message);
+      return {
+        gen: (g.data as Gen) ?? null,
+        logs: (l.data as LogRow[]) ?? [],
+      };
+    },
+  });
 
+  const gen = data?.gen ?? null;
+  const logs = useMemo(() => data?.logs ?? [], [data]);
+
+  // Realtime escreve no cache em vez de num estado paralelo — assim a tela tem
+  // uma fonte de verdade só, e um refetch não descarta o que chegou por aqui.
+  useEffect(() => {
     const channel = supabase
       .channel(`diag-${generationId}`)
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "generation_logs", filter: `generation_id=eq.${generationId}` },
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "generation_logs",
+          filter: `generation_id=eq.${generationId}`,
+        },
         (payload) => {
-          setLogs((prev) => [...prev, payload.new as LogRow]);
+          queryClient.setQueryData(
+            queryKey,
+            (prev: { gen: Gen | null; logs: LogRow[] } | undefined) =>
+              prev ? { ...prev, logs: [...prev.logs, payload.new as LogRow] } : prev,
+          );
         },
       )
       .on(
         "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "generations", filter: `id=eq.${generationId}` },
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "generations",
+          filter: `id=eq.${generationId}`,
+        },
         (payload) => {
-          setGen((prev) => ({ ...(prev ?? {}), ...(payload.new as Gen) }));
+          queryClient.setQueryData(
+            queryKey,
+            (prev: { gen: Gen | null; logs: LogRow[] } | undefined) =>
+              prev ? { ...prev, gen: { ...(prev.gen ?? {}), ...(payload.new as Gen) } } : prev,
+          );
         },
       )
       .subscribe();
 
     return () => {
-      alive = false;
-      supabase.removeChannel(channel);
+      void supabase.removeChannel(channel);
     };
-  }, [generationId]);
+  }, [generationId, queryClient, queryKey]);
 
   const toggle = (id: string) =>
     setExpanded((prev) => {
       const n = new Set(prev);
-      n.has(id) ? n.delete(id) : n.add(id);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
       return n;
     });
 
@@ -102,14 +132,22 @@ function DiagnosticoDetailPage() {
     setReprocessing(true);
     try {
       const meta = { ...(gen?.metadata ?? {}), diagnostics_mode: true };
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const { error } = await supabase
         .from("generations")
-        .update({ status: "queued", error_message: null, progress_percent: 0, progress_stage: null, metadata: meta } as any)
+        .update({
+          status: "queued",
+          error_message: null,
+          progress_percent: 0,
+          progress_stage: null,
+          metadata: meta,
+        } as TablesUpdate<"generations">)
         .eq("id", generationId);
       if (error) throw error;
       // limpa logs anteriores na UI
-      setLogs([]);
+      queryClient.setQueryData(queryKey, (prev: { gen: Gen | null; logs: LogRow[] } | undefined) =>
+        prev ? { ...prev, logs: [] } : prev,
+      );
       const { error: fnErr } = await supabase.functions.invoke("orchestrate-generation", {
         body: { generationId },
       });
@@ -139,7 +177,10 @@ function DiagnosticoDetailPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <Link to="/admin/diagnostico" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+        <Link
+          to="/admin/diagnostico"
+          className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+        >
           <ArrowLeft className="h-3 w-3" /> Voltar
         </Link>
         <button
@@ -147,7 +188,11 @@ function DiagnosticoDetailPage() {
           disabled={reprocessing}
           className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-medium text-primary-foreground transition hover:opacity-90 disabled:opacity-40"
         >
-          {reprocessing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+          {reprocessing ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <RefreshCw className="h-3 w-3" />
+          )}
           Reprocessar com diagnóstico
         </button>
       </div>
@@ -160,10 +205,14 @@ function DiagnosticoDetailPage() {
           </div>
           <div>
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Progresso</p>
-            <p className="font-medium">{gen.progress_percent}% — {gen.progress_stage ?? "—"}</p>
+            <p className="font-medium">
+              {gen.progress_percent}% — {gen.progress_stage ?? "—"}
+            </p>
           </div>
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Memória pico</p>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              Memória pico
+            </p>
             <p className="font-medium">{memMax || "—"} MB</p>
           </div>
           <div>
@@ -172,13 +221,17 @@ function DiagnosticoDetailPage() {
           </div>
         </div>
         {gen.error_message && (
-          <p className="mt-3 rounded bg-red-50 px-3 py-2 text-xs text-red-700">{gen.error_message}</p>
+          <p className="mt-3 rounded bg-red-50 px-3 py-2 text-xs text-red-700">
+            {gen.error_message}
+          </p>
         )}
       </div>
 
       {memSeries.length > 1 && (
         <div className="rounded-md border border-border bg-card p-4">
-          <p className="mb-2 text-[10px] uppercase tracking-wider text-muted-foreground">Heap ao longo do tempo (MB)</p>
+          <p className="mb-2 text-[10px] uppercase tracking-wider text-muted-foreground">
+            Heap ao longo do tempo (MB)
+          </p>
           <div className="flex h-16 items-end gap-px">
             {memSeries.map((m, i) => (
               <div
@@ -204,20 +257,31 @@ function DiagnosticoDetailPage() {
               l.duration_ms != null ? `${l.duration_ms}ms` : null,
               l.payload_kb != null ? `${l.payload_kb}KB` : null,
               l.memory_mb != null ? `mem=${l.memory_mb}MB` : null,
-            ].filter(Boolean).join(" · ");
+            ]
+              .filter(Boolean)
+              .join(" · ");
             return (
               <li key={l.id} className="rounded-md border border-border bg-card">
-                <button onClick={() => toggle(l.id)} className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm">
+                <button
+                  onClick={() => toggle(l.id)}
+                  className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm"
+                >
                   <span className="flex items-center gap-2">
-                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${eventColor[l.event]}`}>{l.event}</span>
+                    <span
+                      className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${eventColor[l.event]}`}
+                    >
+                      {l.event}
+                    </span>
                     <span className="font-mono text-xs">{l.step}</span>
-                    {l.message && <span className="text-xs text-muted-foreground">— {l.message}</span>}
+                    {l.message && (
+                      <span className="text-xs text-muted-foreground">— {l.message}</span>
+                    )}
                   </span>
                   <span className="text-[11px] text-muted-foreground">{meta}</span>
                 </button>
                 {open && (
                   <pre className="overflow-x-auto border-t border-border bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
-{JSON.stringify(l.details, null, 2)}
+                    {JSON.stringify(l.details, null, 2)}
                   </pre>
                 )}
               </li>

@@ -175,35 +175,35 @@
   /* ============== Shadcn semantic tokens (oklch) — mapped to brand ============== */
   --radius: 0.75rem;
 
-  --background: oklch(0.984 0 0);            /* via-bg #F9F9F9 */
-  --foreground: oklch(0.235 0.034 254);      /* via text body #1C2B3A */
+  --background: oklch(0.984 0 0); /* via-bg #F9F9F9 */
+  --foreground: oklch(0.235 0.034 254); /* via text body #1C2B3A */
 
-  --card: oklch(1 0 0);                      /* white */
+  --card: oklch(1 0 0); /* white */
   --card-foreground: oklch(0.235 0.034 254);
 
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.235 0.034 254);
 
-  --primary: oklch(0.176 0.04 257);          /* via-navy #02162A */
+  --primary: oklch(0.176 0.04 257); /* via-navy #02162A */
   --primary-foreground: oklch(1 0 0);
 
-  --secondary: oklch(0.957 0.005 247);       /* via-bg-2 #F0F2F5 */
+  --secondary: oklch(0.957 0.005 247); /* via-bg-2 #F0F2F5 */
   --secondary-foreground: oklch(0.176 0.04 257);
 
   --muted: oklch(0.957 0.005 247);
   --muted-foreground: oklch(0.55 0.025 248); /* #6B7A8D */
 
-  --accent: oklch(0.95 0.025 252);           /* via-blue-light #E8F0FB */
-  --accent-foreground: oklch(0.36 0.118 253);/* via-blue */
+  --accent: oklch(0.95 0.025 252); /* via-blue-light #E8F0FB */
+  --accent-foreground: oklch(0.36 0.118 253); /* via-blue */
 
-  --destructive: oklch(0.51 0.155 27);       /* via-danger */
+  --destructive: oklch(0.51 0.155 27); /* via-danger */
   --destructive-foreground: oklch(1 0 0);
 
-  --border: oklch(0.176 0.04 257 / 0.15);    /* navy 15% */
+  --border: oklch(0.176 0.04 257 / 0.15); /* navy 15% */
   --input: oklch(0.176 0.04 257 / 0.15);
-  --ring: oklch(0.36 0.118 253);             /* via-blue focus */
+  --ring: oklch(0.36 0.118 253); /* via-blue focus */
 
-  --sidebar: oklch(0.176 0.04 257);          /* navy */
+  --sidebar: oklch(0.176 0.04 257); /* navy */
   --sidebar-foreground: oklch(1 0 0);
   --sidebar-primary: oklch(0.36 0.118 253);
   --sidebar-primary-foreground: oklch(1 0 0);
@@ -260,13 +260,22 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-weight: var(--via-fw-bold);
     letter-spacing: -0.01em;
   }
 }
 
 @keyframes stepper-shimmer {
-  0% { left: -33%; }
-  100% { left: 100%; }
+  0% {
+    left: -33%;
+  }
+  100% {
+    left: 100%;
+  }
 }

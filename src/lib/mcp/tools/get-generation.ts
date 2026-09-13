@@ -20,8 +20,7 @@ export default defineTool({
       )
       .eq("id", generation_id)
       .maybeSingle();
-    if (error)
-      return { content: [{ type: "text", text: error.message }], isError: true };
+    if (error) return { content: [{ type: "text", text: error.message }], isError: true };
     if (!data)
       return {
         content: [{ type: "text", text: "Geração não encontrada" }],

@@ -5,8 +5,7 @@ import { supabaseForUser } from "../supabase";
 export default defineTool({
   name: "get_project",
   title: "Detalhar projeto",
-  description:
-    "Retorna um projeto do usuário com os assets (gerações) vinculados a ele.",
+  description: "Retorna um projeto do usuário com os assets (gerações) vinculados a ele.",
   inputSchema: { project_id: z.string().describe("ID do projeto.") },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ project_id }, ctx) => {
@@ -18,8 +17,7 @@ export default defineTool({
       .select("id, name, client_name, deadline, briefing, created_at, updated_at")
       .eq("id", project_id)
       .maybeSingle();
-    if (error)
-      return { content: [{ type: "text", text: error.message }], isError: true };
+    if (error) return { content: [{ type: "text", text: error.message }], isError: true };
     if (!project)
       return {
         content: [{ type: "text", text: "Projeto não encontrado" }],

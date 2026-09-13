@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   Loader2,
@@ -14,6 +15,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { qk } from "@/lib/query-keys";
 import { useAuth } from "@/lib/auth-context";
 import { FreshImg } from "@/components/library/FreshMedia";
 import { AddGenerationsSheet } from "@/components/projetos/AddGenerationsSheet";
@@ -49,9 +51,6 @@ function ProjectDetailPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const [project, setProject] = useState<Project | null>(null);
-  const [assets, setAssets] = useState<Asset[]>([]);
-  const [loading, setLoading] = useState(true);
   const [openAdd, setOpenAdd] = useState(false);
   const [editingMeta, setEditingMeta] = useState(false);
   const [name, setName] = useState("");
@@ -60,47 +59,61 @@ function ProjectDetailPage() {
   const [briefing, setBriefing] = useState("");
   const [savingMeta, setSavingMeta] = useState(false);
   const [copied, setCopied] = useState(false);
+  const queryClient = useQueryClient();
 
-  async function load() {
-    if (!user) return;
-    setLoading(true);
-    const [{ data: p }, { data: a }] = await Promise.all([
-      supabase
-        .from("projects")
-        .select("id, name, client_name, briefing, deadline, share_token")
-        .eq("id", projectId)
-        .eq("user_id", user.id)
-        .maybeSingle(),
-      supabase
-        .from("project_assets")
-        .select(
-          "generation_id, generations(id, pipeline_type, thumbnail_url, final_render_url, prompt, status, created_at)",
-        )
-        .eq("project_id", projectId)
-        .order("added_at", { ascending: false }),
-    ]);
-    setLoading(false);
-    if (!p) {
-      toast.error("Projeto não encontrado");
-      navigate({ to: "/app/projetos" });
-      return;
-    }
-    setProject(p as Project);
-    setName(p.name);
-    setClient(p.client_name ?? "");
-    setDeadline(p.deadline ?? "");
-    setBriefing(p.briefing ?? "");
-    setAssets((a ?? []) as Asset[]);
-  }
+  const { data, isPending, error } = useQuery({
+    queryKey: qk.project(projectId),
+    enabled: !!user,
+    queryFn: async () => {
+      const [{ data: p, error: pErr }, { data: a, error: aErr }] = await Promise.all([
+        supabase
+          .from("projects")
+          .select("id, name, client_name, briefing, deadline, share_token")
+          .eq("id", projectId)
+          .eq("user_id", user!.id)
+          .maybeSingle(),
+        supabase
+          .from("project_assets")
+          .select(
+            "generation_id, generations(id, pipeline_type, thumbnail_url, final_render_url, prompt, status, created_at)",
+          )
+          .eq("project_id", projectId)
+          .order("added_at", { ascending: false }),
+      ]);
+      const failure = pErr ?? aErr;
+      if (failure) throw new Error(failure.message);
+      return { project: (p as Project | null) ?? null, assets: (a ?? []) as Asset[] };
+    },
+  });
+
+  const project = data?.project ?? null;
+  const assets = useMemo(() => data?.assets ?? [], [data]);
+  const loading = isPending && !!user;
 
   useEffect(() => {
-    void load();
-  }, [user, projectId]);
+    if (error) toast.error("Erro ao carregar projeto: " + error.message);
+  }, [error]);
 
-  const existingIds = useMemo(
-    () => new Set(assets.map((a) => a.generation_id)),
-    [assets],
-  );
+  // Projeto inexistente (ou de outro usuário) devolve null sem erro.
+  useEffect(() => {
+    if (!isPending && !error && data && !data.project) {
+      toast.error("Projeto não encontrado");
+      navigate({ to: "/app/projetos" });
+    }
+  }, [isPending, error, data, navigate]);
+
+  // Semeia os campos do formulário quando o projeto chega ou é revalidado.
+  useEffect(() => {
+    if (!project) return;
+    setName(project.name);
+    setClient(project.client_name ?? "");
+    setDeadline(project.deadline ?? "");
+    setBriefing(project.briefing ?? "");
+  }, [project]);
+
+  const reload = () => queryClient.invalidateQueries({ queryKey: qk.project(projectId) });
+
+  const existingIds = useMemo(() => new Set(assets.map((a) => a.generation_id)), [assets]);
 
   async function saveMeta() {
     if (!project) return;
@@ -121,7 +134,7 @@ function ProjectDetailPage() {
     }
     setEditingMeta(false);
     toast.success("Projeto atualizado");
-    void load();
+    void reload();
   }
 
   async function removeAsset(generationId: string) {
@@ -135,12 +148,20 @@ function ProjectDetailPage() {
       toast.error("Erro: " + error.message);
       return;
     }
-    setAssets((prev) => prev.filter((a) => a.generation_id !== generationId));
+    // Remove do cache em vez de refetch: a remoção já é conhecida e local.
+    queryClient.setQueryData(
+      qk.project(projectId),
+      (prev: { project: Project | null; assets: Asset[] } | undefined) =>
+        prev
+          ? { ...prev, assets: prev.assets.filter((a) => a.generation_id !== generationId) }
+          : prev,
+    );
   }
 
   async function deleteProject() {
     if (!project) return;
-    if (!confirm(`Excluir o projeto "${project.name}"? As gerações continuam na biblioteca.`)) return;
+    if (!confirm(`Excluir o projeto "${project.name}"? As gerações continuam na biblioteca.`))
+      return;
     const { error } = await supabase.from("projects").delete().eq("id", project.id);
     if (error) {
       toast.error("Erro: " + error.message);
@@ -234,7 +255,11 @@ function ProjectDetailPage() {
                 disabled={savingMeta}
                 className="inline-flex h-9 items-center gap-2 rounded-full bg-primary px-5 text-xs font-bold uppercase tracking-[0.12em] text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
               >
-                {savingMeta ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                {savingMeta ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Save className="h-3 w-3" />
+                )}
                 Salvar
               </button>
               <button
@@ -378,7 +403,7 @@ function ProjectDetailPage() {
         onOpenChange={setOpenAdd}
         projectId={project.id}
         existingIds={existingIds}
-        onAdded={() => void load()}
+        onAdded={() => void reload()}
       />
     </div>
   );

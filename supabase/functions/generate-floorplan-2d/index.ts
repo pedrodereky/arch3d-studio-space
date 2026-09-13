@@ -1,27 +1,23 @@
 // Pipeline B: briefing → planta baixa 2D via floor-plan-lora.
-// Síncrona, ~30-60s para 4 plantas em paralelo.
+// Assíncrona: responde 202 na hora e processa em background (~30-60s para 4
+// plantas em paralelo). O cliente acompanha pelo status da generation.
 //
 // POST {
 //   briefing: BriefingInput,
 //   projectId?: string
 // }
-// → { generationId, assets: [{ id, url, seed, path }] }
+// → 202 { ok: true, accepted: true, generationId }
+//   As plantas saem em generations.metadata.assets quando status vira succeeded.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import {
-  runFloorplanLora,
-  downloadAsBytes,
-} from "../_shared/replicate-floorplan.ts";
-import {
-  composeFloorplanPrompt,
-  type BriefingInput,
-} from "../_shared/floorplan-prompt.ts";
+import { runFloorplanLora, downloadAsBytes } from "../_shared/replicate-floorplan.ts";
+import { composeFloorplanPrompt, type BriefingInput } from "../_shared/floorplan-prompt.ts";
 import { createLogger } from "../_shared/pipeline-logger.ts";
+import { checkUserBudget } from "../_shared/spend-guard.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -72,14 +68,24 @@ function validateBriefing(b: unknown): BriefingInput {
   };
   const estilo = obj.estilo;
   const validEstilos = [
-    "minimalista_moderno", "industrial", "escandinavo",
-    "neoclassico", "contemporaneo_brasileiro",
+    "minimalista_moderno",
+    "industrial",
+    "escandinavo",
+    "neoclassico",
+    "contemporaneo_brasileiro",
   ];
   if (typeof estilo !== "string" || !validEstilos.includes(estilo)) {
     throw new Error("estilo inválido");
   }
   const extras = Array.isArray(obj.extras) ? (obj.extras as unknown[]) : [];
-  const validExtras = ["varanda_gourmet", "escritorio", "lavabo", "area_servico", "closet", "despensa"];
+  const validExtras = [
+    "varanda_gourmet",
+    "escritorio",
+    "lavabo",
+    "area_servico",
+    "closet",
+    "despensa",
+  ];
   const filteredExtras = extras.filter(
     (e): e is string => typeof e === "string" && validExtras.includes(e),
   );
@@ -98,50 +104,26 @@ function validateBriefing(b: unknown): BriefingInput {
   };
 }
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
-
-  let generationId: string | null = null;
-  let userId: string | null = null;
-
+/**
+ * Trabalho pesado do pipeline: N plantas em paralelo no Replicate, upload,
+ * assets e custo. Roda fora do ciclo da resposta via EdgeRuntime.waitUntil —
+ * antes era feito antes de responder, e uma geração que passasse do teto de
+ * tempo da edge function devolvia erro opaco com o trabalho perdido.
+ */
+async function processFloorplan(params: {
+  generationId: string;
+  userId: string;
+  briefing: BriefingInput;
+  prompt: string;
+  negativePrompt: string;
+  projectId?: string;
+}) {
+  const { generationId, userId, briefing, prompt, negativePrompt, projectId } = params;
   try {
-    userId = await getUserId(req);
-    const body = (await req.json()) as { briefing?: unknown; projectId?: string };
-    const briefing = validateBriefing(body.briefing);
-
-    // rate limit: máx 5 em processing
-    const { count: inProgress } = await admin
-      .from("generations")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", userId)
-      .eq("pipeline_type", "floorplan_2d")
-      .in("status", ["queued", "processing"]);
-    if ((inProgress ?? 0) >= 5) {
-      throw new Error("muitas gerações em andamento, aguarde algumas finalizarem");
-    }
-
-    const { prompt, negativePrompt } = composeFloorplanPrompt(briefing);
-
-    const { data: gen, error: insErr } = await admin
-      .from("generations")
-      .insert({
-        user_id: userId,
-        pipeline_type: "floorplan_2d",
-        engine: "floor_plan_lora",
-        status: "processing",
-        source_images: [],
-        prompt,
-        metadata: { briefing, negative_prompt: negativePrompt, analyses: {} },
-      } as never)
-      .select("id")
-      .single();
-    if (insErr || !gen) throw insErr ?? new Error("falha ao criar generation");
-    generationId = gen.id as string;
-
     const logger = createLogger({
       admin,
-      generationId: generationId!,
-      userId: userId!,
+      generationId,
+      userId,
       enabled: true,
     });
     logger.info("floorplan_2d", "started", { briefing });
@@ -150,9 +132,7 @@ Deno.serve(async (req) => {
     if (!replicateToken) throw new Error("REPLICATE_API_TOKEN não configurado");
 
     // gera N plantas em paralelo
-    const seeds = Array.from({ length: N_VARIATIONS }, () =>
-      Math.floor(Math.random() * 1_000_000),
-    );
+    const seeds = Array.from({ length: N_VARIATIONS }, () => Math.floor(Math.random() * 1_000_000));
 
     const stepRender = logger.start("floor_plan_lora_variations");
     const results = await Promise.all(
@@ -238,11 +218,11 @@ Deno.serve(async (req) => {
       })),
     );
 
-    if (body.projectId) {
+    if (projectId) {
       const { data: proj } = await admin
         .from("projects")
         .select("id")
-        .eq("id", body.projectId)
+        .eq("id", projectId)
         .eq("user_id", userId)
         .maybeSingle();
       if (proj) {
@@ -251,15 +231,85 @@ Deno.serve(async (req) => {
           .insert({ project_id: proj.id, generation_id: generationId } as never);
       }
     }
+  } catch (e) {
+    const msg = (e as Error).message ?? "falha desconhecida";
+    console.error("generate-floorplan-2d processamento", generationId, msg);
+    await admin
+      .from("generations")
+      .update({
+        status: "failed",
+        error_message: msg,
+        completed_at: new Date().toISOString(),
+      } as never)
+      .eq("id", generationId);
+  }
+}
 
-    return new Response(
-      JSON.stringify({
-        ok: true,
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  let generationId: string | null = null;
+  let userId: string | null = null;
+
+  try {
+    userId = await getUserId(req);
+    const body = (await req.json()) as { briefing?: unknown; projectId?: string };
+    const briefing = validateBriefing(body.briefing);
+
+    // rate limit: máx 5 em processing
+    const { count: inProgress } = await admin
+      .from("generations")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("pipeline_type", "floorplan_2d")
+      .in("status", ["queued", "processing"]);
+    if ((inProgress ?? 0) >= 5) {
+      throw new Error("muitas gerações em andamento, aguarde algumas finalizarem");
+    }
+
+    const budget = await checkUserBudget(admin, userId);
+    if (!budget.allowed) {
+      return new Response(JSON.stringify({ ok: false, error: budget.reason }), {
+        status: 429,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { prompt, negativePrompt } = composeFloorplanPrompt(briefing);
+
+    const { data: gen, error: insErr } = await admin
+      .from("generations")
+      .insert({
+        user_id: userId,
+        pipeline_type: "floorplan_2d",
+        engine: "floor_plan_lora",
+        status: "processing",
+        source_images: [],
+        prompt,
+        metadata: { briefing, negative_prompt: negativePrompt, analyses: {} },
+      } as never)
+      .select("id")
+      .single();
+    if (insErr || !gen) throw insErr ?? new Error("falha ao criar generation");
+    generationId = gen.id as string;
+
+    // Despacha e responde na hora; o cliente acompanha por polling.
+    // @ts-ignore EdgeRuntime é global nas Edge Functions do Supabase
+    EdgeRuntime.waitUntil(
+      processFloorplan({
         generationId,
-        assets: assets.map((a) => ({ id: a.id, url: a.url, seed: a.seed })),
+        userId,
+        briefing,
+        prompt,
+        negativePrompt,
+        projectId: body.projectId,
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
+
+    return new Response(JSON.stringify({ ok: true, accepted: true, generationId }), {
+      status: 202,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (e) {
     const msg = (e as Error).message ?? "falha desconhecida";
     console.error("generate-floorplan-2d erro", msg);
@@ -273,9 +323,9 @@ Deno.serve(async (req) => {
         } as never)
         .eq("id", generationId);
     }
-    return new Response(
-      JSON.stringify({ ok: false, error: msg, generationId }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    return new Response(JSON.stringify({ ok: false, error: msg, generationId }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });

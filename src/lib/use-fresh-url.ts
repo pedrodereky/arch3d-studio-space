@@ -11,7 +11,9 @@ const CACHE_TTL_MS = 50 * 60 * 1000; // re-sign 10min antes de expirar
 type CacheEntry = { url: string; expiresAt: number };
 const cache = new Map<string, CacheEntry>();
 
-export function parseStorageRef(url: string | null | undefined): { bucket: string; path: string } | null {
+export function parseStorageRef(
+  url: string | null | undefined,
+): { bucket: string; path: string } | null {
   if (!url || typeof url !== "string") return null;
   // Match /storage/v1/object/(sign|public|authenticated)/<bucket>/<path>?...
   const m = url.match(/\/storage\/v1\/object\/(?:sign|public|authenticated)\/([^/]+)\/([^?]+)/);

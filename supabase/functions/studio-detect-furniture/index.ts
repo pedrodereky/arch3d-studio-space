@@ -5,8 +5,7 @@ import { extractScene } from "../_shared/scene-extract.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -64,9 +63,7 @@ Deno.serve(async (req) => {
 
     let imageUrl = node.url ?? null;
     if (node.path) {
-      const { data } = await admin.storage
-        .from("outputs")
-        .createSignedUrl(node.path, 60 * 10);
+      const { data } = await admin.storage.from("outputs").createSignedUrl(node.path, 60 * 10);
       imageUrl = data?.signedUrl ?? imageUrl;
     }
     if (!imageUrl) throw new Error("sem url da imagem");

@@ -18,8 +18,7 @@ import { createLogger } from "../_shared/pipeline-logger.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -42,10 +41,7 @@ function bytesToBase64(bytes: Uint8Array): string {
   let bin = "";
   const CHUNK = 0x8000;
   for (let i = 0; i < bytes.length; i += CHUNK) {
-    bin += String.fromCharCode.apply(
-      null,
-      bytes.subarray(i, i + CHUNK) as unknown as number[],
-    );
+    bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK) as unknown as number[]);
   }
   return btoa(bin);
 }
@@ -79,29 +75,22 @@ async function uploadIntermediate(
 async function buildFloorPlaneGLB(w: number, h: number): Promise<Uint8Array> {
   const doc = new Document();
   const buffer = doc.createBuffer();
-  const hx = w / 2, hz = h / 2;
-  const positions = new Float32Array([
-    -hx, 0, -hz,
-     hx, 0, -hz,
-     hx, 0,  hz,
-    -hx, 0,  hz,
-  ]);
-  const normals = new Float32Array([
-    0, 1, 0,  0, 1, 0,  0, 1, 0,  0, 1, 0,
-  ]);
+  const hx = w / 2,
+    hz = h / 2;
+  const positions = new Float32Array([-hx, 0, -hz, hx, 0, -hz, hx, 0, hz, -hx, 0, hz]);
+  const normals = new Float32Array([0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0]);
   const indices = new Uint16Array([0, 1, 2, 0, 2, 3]);
-  const posAcc = doc.createAccessor()
-    .setType("VEC3").setArray(positions).setBuffer(buffer);
-  const nrmAcc = doc.createAccessor()
-    .setType("VEC3").setArray(normals).setBuffer(buffer);
-  const idxAcc = doc.createAccessor()
-    .setType("SCALAR").setArray(indices).setBuffer(buffer);
-  const mat = doc.createMaterial("floor")
+  const posAcc = doc.createAccessor().setType("VEC3").setArray(positions).setBuffer(buffer);
+  const nrmAcc = doc.createAccessor().setType("VEC3").setArray(normals).setBuffer(buffer);
+  const idxAcc = doc.createAccessor().setType("SCALAR").setArray(indices).setBuffer(buffer);
+  const mat = doc
+    .createMaterial("floor")
     .setBaseColorFactor([0.85, 0.85, 0.85, 1])
     .setRoughnessFactor(0.9)
     .setMetallicFactor(0)
     .setDoubleSided(true);
-  const prim = doc.createPrimitive()
+  const prim = doc
+    .createPrimitive()
     .setAttribute("POSITION", posAcc)
     .setAttribute("NORMAL", nrmAcc)
     .setIndices(idxAcc)
@@ -127,10 +116,7 @@ async function callGemini(
     contents: [
       {
         role: "user",
-        parts: [
-          { text: prompt },
-          { inline_data: { mime_type: mime, data: imageB64 } },
-        ],
+        parts: [{ text: prompt }, { inline_data: { mime_type: mime, data: imageB64 } }],
       },
     ],
   };
@@ -161,7 +147,6 @@ async function callGemini(
 //  em _shared/floorplan-analyzer.ts: 1 chamada que consolida classificação +
 //  seleção de refs + prompt final, sem decodificar imagens no worker.)
 
-
 // Base compartilhada por todas as vistas — força consistência total de cor,
 // material, escala e iluminação. Só o ângulo de câmera muda entre prompts.
 const VIEW_BASE =
@@ -178,10 +163,17 @@ const VIEW_BASE =
   "The output must look like the SAME physical object photographed in the SAME lighting setup, only rotated. ";
 
 const VIEW_PROMPTS = {
-  front: VIEW_BASE + "Camera angle: FRONT view (0°), looking straight at the front face of the object.",
-  right: VIEW_BASE + "Camera angle: RIGHT side view (90° clockwise from front), looking straight at the right face of the object.",
-  back: VIEW_BASE + "Camera angle: BACK view (180° from front), looking straight at the back face of the object.",
-  left: VIEW_BASE + "Camera angle: LEFT side view (90° counter-clockwise from front), looking straight at the left face of the object.",
+  front:
+    VIEW_BASE + "Camera angle: FRONT view (0°), looking straight at the front face of the object.",
+  right:
+    VIEW_BASE +
+    "Camera angle: RIGHT side view (90° clockwise from front), looking straight at the right face of the object.",
+  back:
+    VIEW_BASE +
+    "Camera angle: BACK view (180° from front), looking straight at the back face of the object.",
+  left:
+    VIEW_BASE +
+    "Camera angle: LEFT side view (90° counter-clockwise from front), looking straight at the left face of the object.",
 };
 
 // ndreca/hunyuan3d-2.1 — suporta `generate_texture` (PBR). Modelos sem esse parâmetro
@@ -209,10 +201,7 @@ async function postReplicate(
     const json = await r.json().catch(() => ({}));
     if (r.status !== 429) return { ok: r.ok, status: r.status, json };
     const retryAfter = Number(json?.retry_after ?? 0);
-    const wait = Math.min(
-      Math.max(retryAfter * 1000, 2000 * Math.pow(2, attempt)),
-      30_000,
-    );
+    const wait = Math.min(Math.max(retryAfter * 1000, 2000 * Math.pow(2, attempt)), 30_000);
     console.warn(`replicate 429, retry em ${wait}ms (tentativa ${attempt + 1}/${maxRetries})`);
     await new Promise((res) => setTimeout(res, wait));
   }
@@ -221,17 +210,19 @@ async function postReplicate(
 
 async function processGeneration(generationId: string): Promise<void> {
   try {
-
     const replicateToken = await getSecret("REPLICATE_API_TOKEN");
     const geminiKey = await getSecret("GEMINI_API_KEY");
-    const openaiKey = Deno.env.get("OPENAI_API_KEY") ?? await getSecret("OPENAI_API_KEY");
+    const openaiKey = Deno.env.get("OPENAI_API_KEY") ?? (await getSecret("OPENAI_API_KEY"));
     if (!replicateToken) throw new Error("REPLICATE_API_TOKEN não configurado");
 
     // Wrapper: usa OpenAI direto se a key estiver configurada; senão cai no proxy do Replicate.
     const callImage2 = async (
       refs: Array<{ b64: string; mime: string }>,
       prompt: string,
-      o: { aspect_ratio: "1:1" | "16:9" | "9:16" | "4:3" | "3:4" | "3:2" | "2:3"; output_format?: "png" | "webp" | "jpeg" },
+      o: {
+        aspect_ratio: "1:1" | "16:9" | "9:16" | "4:3" | "3:4" | "3:2" | "2:3";
+        output_format?: "png" | "webp" | "jpeg";
+      },
     ): Promise<{ bytes: Uint8Array; mime: string }> => {
       const outFmt = o.output_format ?? "png";
       if (openaiKey) {
@@ -262,11 +253,14 @@ async function processGeneration(generationId: string): Promise<void> {
     if (genErr || !gen) throw genErr ?? new Error("Geração não encontrada");
 
     if (gen.pipeline_type === "floorplan" || gen.pipeline_type === "scene_to_3d") {
-      await admin.from("generations").update({
-        status: "failed",
-        error_message: "Este modo foi descontinuado.",
-        completed_at: new Date().toISOString(),
-      }).eq("id", generationId);
+      await admin
+        .from("generations")
+        .update({
+          status: "failed",
+          error_message: "Este modo foi descontinuado.",
+          completed_at: new Date().toISOString(),
+        })
+        .eq("id", generationId);
       return;
     }
 
@@ -304,11 +298,12 @@ async function processGeneration(generationId: string): Promise<void> {
       if (!imageUrl) throw new Error("Sem imagem de origem para o vídeo");
 
       const userPrompt = ((gen.prompt as string | null) ?? "").trim();
-      const cameraMode = ((gen.metadata as Record<string, unknown> | null)?.camera_mode as
-        | "pov_walk"
-        | "aerial_flyover"
-        | "facade_tour"
-        | undefined) ?? "pov_walk";
+      const cameraMode =
+        ((gen.metadata as Record<string, unknown> | null)?.camera_mode as
+          | "pov_walk"
+          | "aerial_flyover"
+          | "facade_tour"
+          | undefined) ?? "pov_walk";
       const BASE_PROMPTS: Record<string, string> = {
         pov_walk:
           "First-person POV walkthrough of this interior space. Smooth, slow camera movement at human eye level, gently exploring the room as if walking through it. Cinematic, photorealistic, natural lighting, no people visible, no text overlays.",
@@ -320,10 +315,13 @@ async function processGeneration(generationId: string): Promise<void> {
       const basePrompt = BASE_PROMPTS[cameraMode] ?? BASE_PROMPTS.pov_walk;
       const finalPrompt = userPrompt ? `${basePrompt} ${userPrompt}` : basePrompt;
 
-      await admin.from("generations").update({
-        progress_percent: 20,
-        progress_stage: "Enviando para o gerador de vídeo (Happyhorse)",
-      }).eq("id", generationId);
+      await admin
+        .from("generations")
+        .update({
+          progress_percent: 20,
+          progress_stage: "Enviando para o gerador de vídeo (Happyhorse)",
+        })
+        .eq("id", generationId);
 
       const webhookUrl = `${SUPABASE_URL}/functions/v1/replicate-webhook`;
       const endpoint = "https://api.replicate.com/v1/models/alibaba/happyhorse-1.0/predictions";
@@ -357,7 +355,8 @@ async function processGeneration(generationId: string): Promise<void> {
 
     // ========= Pipeline floorplan_render: planta 2D (PDF multipágina) → render isométrico 3D =========
     if (gen.pipeline_type === "floorplan_render") {
-      const diagnosticsMode = (gen.metadata as Record<string, unknown> | null)?.diagnostics_mode === true;
+      const diagnosticsMode =
+        (gen.metadata as Record<string, unknown> | null)?.diagnostics_mode === true;
       const log = createLogger({
         admin,
         generationId,
@@ -369,23 +368,30 @@ async function processGeneration(generationId: string): Promise<void> {
       });
 
       const extra = (gen.prompt as string | null)?.trim() ?? "";
-      const lovableKey = Deno.env.get("LOVABLE_API_KEY") ?? await getSecret("LOVABLE_API_KEY");
+      const lovableKey = Deno.env.get("LOVABLE_API_KEY") ?? (await getSecret("LOVABLE_API_KEY"));
       if (!lovableKey) throw new Error("LOVABLE_API_KEY não configurado");
-      const viewMode = ((gen.metadata as Record<string, unknown> | null)?.view_mode as
-        | "isometric_aerial"
-        | "frontal_interior"
-        | "facade_exterior"
-        | undefined) ?? "isometric_aerial";
-      const metadataLog: Record<string, unknown> = { diagnostics_mode: diagnosticsMode, view_mode: viewMode };
+      const viewMode =
+        ((gen.metadata as Record<string, unknown> | null)?.view_mode as
+          | "isometric_aerial"
+          | "frontal_interior"
+          | "facade_exterior"
+          | undefined) ?? "isometric_aerial";
+      const metadataLog: Record<string, unknown> = {
+        diagnostics_mode: diagnosticsMode,
+        view_mode: viewMode,
+      };
 
       // ===== Etapa 1: Download das páginas (BYTES brutos, sem decodificar) =====
       // CRÍTICO: nunca chamar imagescript aqui. Decodificar páginas A3 estoura
       // a memória do worker Deno (~150MB heap). O cliente já manda JPEGs em
       // resolução adequada (~400KB-1MB cada).
-      await admin.from("generations").update({
-        progress_percent: 10,
-        progress_stage: "Baixando páginas do projeto",
-      }).eq("id", generationId);
+      await admin
+        .from("generations")
+        .update({
+          progress_percent: 10,
+          progress_stage: "Baixando páginas do projeto",
+        })
+        .eq("id", generationId);
 
       const pages: { b64: string; mime: string }[] = [];
       for (let i = 0; i < sourceImages.length; i++) {
@@ -405,10 +411,13 @@ async function processGeneration(generationId: string): Promise<void> {
 
       // ===== Etapa 2: Análise consolidada (1 chamada gpt-5.5) =====
       // Substitui: classifier + cropper + brief + compose. Sem decode no worker.
-      await admin.from("generations").update({
-        progress_percent: 30,
-        progress_stage: "Analisando pranchas e gerando briefing",
-      }).eq("id", generationId);
+      await admin
+        .from("generations")
+        .update({
+          progress_percent: 30,
+          progress_stage: "Analisando pranchas e gerando briefing",
+        })
+        .eq("id", generationId);
 
       const totalKb = pages.reduce((s, p) => s + Math.round((p.b64.length * 3) / 4 / 1024), 0);
       const ah = log.start("analyzer", { pages_count: pages.length, total_payload_kb: totalKb });
@@ -441,14 +450,19 @@ async function processGeneration(generationId: string): Promise<void> {
       }
 
       // ===== Etapa 4: 2 candidatos em paralelo =====
-      await admin.from("generations").update({
-        progress_percent: 60,
-        progress_stage: "Gerando 2 candidatos em paralelo",
-      }).eq("id", generationId);
+      await admin
+        .from("generations")
+        .update({
+          progress_percent: 60,
+          progress_stage: "Gerando 2 candidatos em paralelo",
+        })
+        .eq("id", generationId);
 
-      const promptStrict = analysis.prompt_for_gpt_image_2 +
+      const promptStrict =
+        analysis.prompt_for_gpt_image_2 +
         `\n\nPRIORITY: maximize geometric and layout fidelity over visual polish. The render should look like a faithful technical 3D maquette, even if slightly less polished. Do NOT decorate beyond what is in the references.`;
-      const promptBalanced = analysis.prompt_for_gpt_image_2 +
+      const promptBalanced =
+        analysis.prompt_for_gpt_image_2 +
         `\n\nPRIORITY: balance geometric fidelity with polished commercial architectural presentation. Maintain all layout constraints but produce a clean, well-lit professional render.`;
 
       const variants: Array<{ name: string; prompt: string }> = [
@@ -464,7 +478,8 @@ async function processGeneration(generationId: string): Promise<void> {
         const h = log.start(`render.${v.name}`, { ref_count: refImages.length, payload_kb: refKb });
         try {
           const res = await callImage2(refImages, v.prompt, {
-            aspect_ratio: "3:2", output_format: "png",
+            aspect_ratio: "3:2",
+            output_format: "png",
           });
           log.end(h, { payload_kb: Math.round(res.bytes.length / 1024), message: "ok" });
           return { ok: true as const, variant: v.name, bytes: res.bytes, mime: res.mime };
@@ -481,41 +496,54 @@ async function processGeneration(generationId: string): Promise<void> {
       }
 
       if (successful.length === 0) {
-        throw new Error(`Ambos candidatos falharam: ${failures.map((f) => `${f.variant}: ${f.error}`).join(" | ")}`);
+        throw new Error(
+          `Ambos candidatos falharam: ${failures.map((f) => `${f.variant}: ${f.error}`).join(" | ")}`,
+        );
       }
 
-      await admin.from("generations").update({
-        progress_percent: 90,
-        progress_stage: "Salvando resultados",
-      }).eq("id", generationId);
+      await admin
+        .from("generations")
+        .update({
+          progress_percent: 90,
+          progress_stage: "Salvando resultados",
+        })
+        .eq("id", generationId);
 
       const candidateUrls: { variant: string; url: string }[] = [];
       for (const s of successful) {
         const url = await uploadIntermediate(
-          gen.user_id, gen.id, `render_${s.variant}.png`, s.bytes, s.mime,
+          gen.user_id,
+          gen.id,
+          `render_${s.variant}.png`,
+          s.bytes,
+          s.mime,
         );
         candidateUrls.push({ variant: s.variant, url });
       }
 
       metadataLog.candidates = candidateUrls;
 
-      const primary = candidateUrls.find((x) => x.variant === "fidelity_strict") ?? candidateUrls[0];
+      const primary =
+        candidateUrls.find((x) => x.variant === "fidelity_strict") ?? candidateUrls[0];
       const intermediates = candidateUrls.filter((x) => x.url !== primary.url).map((x) => x.url);
 
       // gpt-image-2 high (~$0.19 each) + gpt-5.5 analyzer consolidado (~$0.25)
       const cost = 0.19 * successful.length + 0.25;
 
-      await admin.from("generations").update({
-        status: "succeeded",
-        progress_percent: 100,
-        progress_stage: "Concluído",
-        final_render_url: primary.url,
-        thumbnail_url: primary.url,
-        intermediate_images: intermediates,
-        metadata: metadataLog,
-        cost_usd: cost,
-        completed_at: new Date().toISOString(),
-      }).eq("id", generationId);
+      await admin
+        .from("generations")
+        .update({
+          status: "succeeded",
+          progress_percent: 100,
+          progress_stage: "Concluído",
+          final_render_url: primary.url,
+          thumbnail_url: primary.url,
+          intermediate_images: intermediates,
+          metadata: metadataLog,
+          cost_usd: cost,
+          completed_at: new Date().toISOString(),
+        })
+        .eq("id", generationId);
 
       await admin.from("api_costs").insert({
         generation_id: gen.id,
@@ -528,7 +556,6 @@ async function processGeneration(generationId: string): Promise<void> {
       return;
     }
 
-
     let processed = await fetchAsBase64(sourceUrl);
     const intermediateUrls: string[] = [];
 
@@ -538,15 +565,23 @@ async function processGeneration(generationId: string): Promise<void> {
       const lovableKey = await getSecret("LOVABLE_API_KEY");
 
       // 1. Gemini extrai estrutura JSON
-      await admin.from("generations").update({
-        progress_percent: 10, progress_stage: "Analisando planta",
-      }).eq("id", generationId);
+      await admin
+        .from("generations")
+        .update({
+          progress_percent: 10,
+          progress_stage: "Analisando planta",
+        })
+        .eq("id", generationId);
       const blueprint = await extractFloorplan(geminiKey, processed.b64, processed.mime);
 
       // 2. Em paralelo: texturas PBR + meshes IA dos móveis
-      await admin.from("generations").update({
-        progress_percent: 25, progress_stage: "Gerando texturas e móveis",
-      }).eq("id", generationId);
+      await admin
+        .from("generations")
+        .update({
+          progress_percent: 25,
+          progress_stage: "Gerando texturas e móveis",
+        })
+        .eq("id", generationId);
 
       const totalFurniture = blueprint.furniture.length;
       let lastReportedDone = -1;
@@ -554,43 +589,61 @@ async function processGeneration(generationId: string): Promise<void> {
         if (done === lastReportedDone) return;
         lastReportedDone = done;
         const pct = total > 0 ? 25 + Math.round((done / total) * 55) : 80;
-        admin.from("generations").update({
-          progress_percent: pct,
-          progress_stage: `Gerando móveis ${done}/${total}`,
-        }).eq("id", generationId).then(() => {}, () => {});
+        admin
+          .from("generations")
+          .update({
+            progress_percent: pct,
+            progress_stage: `Gerando móveis ${done}/${total}`,
+          })
+          .eq("id", generationId)
+          .then(
+            () => {},
+            () => {},
+          );
       };
 
       const texturesPromise = lovableKey
-        ? generateTextureSet(lovableKey, requiredTextureKeys(blueprint))
-            .catch((e) => {
-              console.error("textura set fail:", (e as Error).message);
-              return new Map();
-            })
+        ? generateTextureSet(lovableKey, requiredTextureKeys(blueprint)).catch((e) => {
+            console.error("textura set fail:", (e as Error).message);
+            return new Map();
+          })
         : Promise.resolve(new Map());
 
-      const meshesPromise = totalFurniture > 0
-        ? generateFurnitureMeshes(replicateToken, blueprint.furniture, onFurnitureProgress)
-            .catch((e) => {
-              console.error("furniture meshes fail:", (e as Error).message);
-              return [];
-            })
-        : Promise.resolve([]);
+      const meshesPromise =
+        totalFurniture > 0
+          ? generateFurnitureMeshes(replicateToken, blueprint.furniture, onFurnitureProgress).catch(
+              (e) => {
+                console.error("furniture meshes fail:", (e as Error).message);
+                return [];
+              },
+            )
+          : Promise.resolve([]);
 
       const [textures, meshResults] = await Promise.all([texturesPromise, meshesPromise]);
-      console.log(`textures: ${textures.size}, meshes ok: ${meshResults.filter((m) => m.bytes).length}/${totalFurniture}`);
+      console.log(
+        `textures: ${textures.size}, meshes ok: ${meshResults.filter((m) => m.bytes).length}/${totalFurniture}`,
+      );
 
       // 3. Builder constrói GLB base (paredes + piso, sem móveis primitivos)
-      await admin.from("generations").update({
-        progress_percent: 82, progress_stage: "Construindo cena 3D",
-      }).eq("id", generationId);
+      await admin
+        .from("generations")
+        .update({
+          progress_percent: 82,
+          progress_stage: "Construindo cena 3D",
+        })
+        .eq("id", generationId);
       const baseGlb = buildFloorplanGLB(blueprint, textures, { includePrimitiveFurniture: false });
 
       // 4. Merge dos GLBs de móveis na cena
       let finalGlb = baseGlb;
       if (meshResults.some((m) => m.bytes)) {
-        await admin.from("generations").update({
-          progress_percent: 90, progress_stage: "Compondo móveis na cena",
-        }).eq("id", generationId);
+        await admin
+          .from("generations")
+          .update({
+            progress_percent: 90,
+            progress_stage: "Compondo móveis na cena",
+          })
+          .eq("id", generationId);
         try {
           const merged = await mergeFurnitureIntoGLB(baseGlb, meshResults);
           finalGlb = merged.glb;
@@ -601,9 +654,13 @@ async function processGeneration(generationId: string): Promise<void> {
       }
 
       // 5. Upload do GLB final
-      await admin.from("generations").update({
-        progress_percent: 95, progress_stage: "Salvando cena",
-      }).eq("id", generationId);
+      await admin
+        .from("generations")
+        .update({
+          progress_percent: 95,
+          progress_stage: "Salvando cena",
+        })
+        .eq("id", generationId);
       const glbPath = `${gen.user_id}/${gen.id}/scene.glb`;
       const { error: upErr } = await admin.storage
         .from("outputs")
@@ -631,35 +688,48 @@ async function processGeneration(generationId: string): Promise<void> {
     if (gen.pipeline_type === "scene_to_3d") {
       if (!geminiKey) throw new Error("GEMINI_API_KEY não configurado");
 
-      await admin.from("generations").update({
-        progress_percent: 10, progress_stage: "Detectando objetos da cena",
-      }).eq("id", generationId);
+      await admin
+        .from("generations")
+        .update({
+          progress_percent: 10,
+          progress_stage: "Detectando objetos da cena",
+        })
+        .eq("id", generationId);
 
       const scene = await extractScene(geminiKey, processed.b64, processed.mime);
       console.log(`scene: ${scene.objects.length} objetos detectados`);
 
-      await admin.from("generations").update({
-        progress_percent: 20,
-        progress_stage: `Gerando ${scene.objects.length} móveis`,
-      }).eq("id", generationId);
+      await admin
+        .from("generations")
+        .update({
+          progress_percent: 20,
+          progress_stage: `Gerando ${scene.objects.length} móveis`,
+        })
+        .eq("id", generationId);
 
       let lastDone = -1;
       const onProgress = (done: number, total: number) => {
         if (done === lastDone) return;
         lastDone = done;
         const pct = total > 0 ? 20 + Math.round((done / total) * 65) : 85;
-        admin.from("generations").update({
-          progress_percent: pct,
-          progress_stage: `Gerando móveis ${done}/${total}`,
-        }).eq("id", generationId).then(() => {}, () => {});
+        admin
+          .from("generations")
+          .update({
+            progress_percent: pct,
+            progress_stage: `Gerando móveis ${done}/${total}`,
+          })
+          .eq("id", generationId)
+          .then(
+            () => {},
+            () => {},
+          );
       };
 
       const meshResults = await generateSceneObjectMeshes(
         replicateToken,
         scene.objects,
         {
-          callGemini: (b64, mime, prompt) =>
-            callGemini(geminiKey, b64, mime, prompt),
+          callGemini: (b64, mime, prompt) => callGemini(geminiKey, b64, mime, prompt),
           uploadIntermediate: (name, bytes, mime) =>
             uploadIntermediate(gen.user_id, gen.id, name, bytes, mime),
           bytesToBase64,
@@ -674,13 +744,20 @@ async function processGeneration(generationId: string): Promise<void> {
 
       // Coleta URLs de imagens isoladas geradas (intermediates) para preview
       const { data: cur } = await admin
-        .from("generations").select("intermediate_images").eq("id", generationId).single();
+        .from("generations")
+        .select("intermediate_images")
+        .eq("id", generationId)
+        .single();
       const intermediates = (cur?.intermediate_images as string[]) ?? [];
       const sceneThumb = intermediates[0] ?? sourceUrl;
 
-      await admin.from("generations").update({
-        progress_percent: 88, progress_stage: "Compondo cena 3D",
-      }).eq("id", generationId);
+      await admin
+        .from("generations")
+        .update({
+          progress_percent: 88,
+          progress_stage: "Compondo cena 3D",
+        })
+        .eq("id", generationId);
 
       // Cena base com piso simples cinza claro do tamanho da bounds detectada
       const floorW = Math.max(2, scene.bounds_m?.w ?? 6);
@@ -697,15 +774,17 @@ async function processGeneration(generationId: string): Promise<void> {
         throw new Error(`Falha ao compor cena: ${(e as Error).message}`);
       }
       if (attached === 0) {
-        throw new Error(
-          "Falha ao compor cena: nenhum móvel pôde ser fundido no GLB final",
-        );
+        throw new Error("Falha ao compor cena: nenhum móvel pôde ser fundido no GLB final");
       }
       console.log(`scene_to_3d: glb final=${finalGlb.byteLength}B (${attached} móveis)`);
 
-      await admin.from("generations").update({
-        progress_percent: 95, progress_stage: "Salvando cena",
-      }).eq("id", generationId);
+      await admin
+        .from("generations")
+        .update({
+          progress_percent: 95,
+          progress_stage: "Salvando cena",
+        })
+        .eq("id", generationId);
       const glbPath = `${gen.user_id}/${gen.id}/scene.glb`;
       const { error: upErr } = await admin.storage
         .from("outputs")
@@ -831,6 +910,7 @@ async function processGeneration(generationId: string): Promise<void> {
 }
 
 import { getUserId } from "../_shared/auth.ts";
+import { checkUserBudget } from "../_shared/spend-guard.ts";
 
 Deno.serve((req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -864,6 +944,17 @@ Deno.serve((req) => {
       if (gen.user_id !== callerId) {
         return new Response(JSON.stringify({ error: "Acesso negado" }), {
           status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const budget = await checkUserBudget(admin, callerId);
+      if (!budget.allowed) {
+        await admin
+          .from("generations")
+          .update({ status: "failed", error_message: budget.reason })
+          .eq("id", generationId);
+        return new Response(JSON.stringify({ error: budget.reason }), {
+          status: 429,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }

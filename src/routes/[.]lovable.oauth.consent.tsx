@@ -15,14 +15,12 @@ type OAuthNamespace = {
   denyAuthorization: (id: string) => Promise<OAuthResult>;
 };
 
-const oauth = () =>
-  (supabase.auth as unknown as { oauth: OAuthNamespace }).oauth;
+const oauth = () => (supabase.auth as unknown as { oauth: OAuthNamespace }).oauth;
 
 export const Route = createFileRoute("/.lovable/oauth/consent")({
   ssr: false,
   validateSearch: (s: Record<string, unknown>) => ({
-    authorization_id:
-      typeof s.authorization_id === "string" ? s.authorization_id : "",
+    authorization_id: typeof s.authorization_id === "string" ? s.authorization_id : "",
   }),
   beforeLoad: async ({ search, location }) => {
     if (!search.authorization_id) throw new Error("authorization_id ausente");
@@ -35,9 +33,7 @@ export const Route = createFileRoute("/.lovable/oauth/consent")({
     }
   },
   loader: async ({ location }) => {
-    const authorizationId = new URLSearchParams(location.search).get(
-      "authorization_id",
-    )!;
+    const authorizationId = new URLSearchParams(location.search).get("authorization_id")!;
     const { data, error } = await oauth().getAuthorizationDetails(authorizationId);
     if (error) throw error;
     const immediate = data?.redirect_url ?? data?.redirect_to;
@@ -50,9 +46,7 @@ export const Route = createFileRoute("/.lovable/oauth/consent")({
       <h1 className="text-xl font-black uppercase tracking-tight text-foreground">
         Não foi possível carregar
       </h1>
-      <p className="text-sm text-muted-foreground">
-        {String((error as Error)?.message ?? error)}
-      </p>
+      <p className="text-sm text-muted-foreground">{String((error as Error)?.message ?? error)}</p>
     </main>
   ),
 });
@@ -94,8 +88,8 @@ function Consent() {
           Conectar {clientName}
         </h1>
         <p className="text-sm text-muted-foreground">
-          {clientName} poderá acessar seus projetos e sua biblioteca do Arq3D
-          Studio agindo como você. Você pode revogar o acesso a qualquer momento.
+          {clientName} poderá acessar seus projetos e sua biblioteca do Arq3D Studio agindo como
+          você. Você pode revogar o acesso a qualquer momento.
         </p>
       </div>
       {error && (

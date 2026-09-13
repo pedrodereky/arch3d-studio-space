@@ -19,8 +19,7 @@ export const STYLE_PRESET_KEYWORDS: Record<Exclude<StylePreset, "custom">, strin
     "Redesign in modern minimalist style: clean lines, neutral palette of off-white and warm grey, matte concrete or microcement surfaces, designer furniture with simple geometry, integrated indirect lighting.",
   industrial:
     "Redesign in industrial loft style: exposed brick wall, raw concrete or dark wood floor, black steel frames, edison bulb pendant lighting, vintage leather sofa, mixed wood and metal furniture.",
-  boho:
-    "Redesign in boho style: layered textiles, rattan and macramé details, terracotta and ochre palette with cream accents, abundant indoor plants, warm ambient lighting, eclectic but cohesive composition.",
+  boho: "Redesign in boho style: layered textiles, rattan and macramé details, terracotta and ochre palette with cream accents, abundant indoor plants, warm ambient lighting, eclectic but cohesive composition.",
   contemporary_brazilian:
     "Redesign in contemporary Brazilian interior style: warm tropical hardwoods (freijó, cumaru), natural fiber rugs, organic curved upholstery, large windows with soft daylight, refined neutral palette with green plants.",
   classic_timeless:

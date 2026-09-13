@@ -4,11 +4,7 @@
 // Cada móvel é normalizado para caber em (width_m × depth_m), apoiado no chão (y=0),
 // transladado para (x, 0, y) do blueprint e rotacionado em torno de Y.
 
-import {
-  Document,
-  WebIO,
-  type Node,
-} from "https://esm.sh/@gltf-transform/core@4.0.7";
+import { Document, WebIO, type Node } from "https://esm.sh/@gltf-transform/core@4.0.7";
 import type { Furniture } from "./floorplan-extract.ts";
 import type { MeshResult } from "./furniture-mesh.ts";
 
@@ -84,7 +80,8 @@ export async function mergeFurnitureIntoGLB(
       wrapper.setTranslation([f.x, 0, f.y]);
       // Quaternion for rotation around Y by rotRad
       wrapper.setRotation([0, Math.sin(rotRad / 2), 0, Math.cos(rotRad / 2)]);
-      void cosR; void sinR;
+      void cosR;
+      void sinR;
 
       // Inner node centers + scales the imported geometry
       const inner = baseDoc.createNode(`furniture_${m.index}_inner`);
@@ -97,7 +94,11 @@ export async function mergeFurnitureIntoGLB(
           parent.removeChild(root);
         } else {
           for (const s of newScenes) {
-            try { s.removeChild(root); } catch { /* noop */ }
+            try {
+              s.removeChild(root);
+            } catch {
+              /* noop */
+            }
           }
         }
         inner.addChild(root);
@@ -118,7 +119,6 @@ export async function mergeFurnitureIntoGLB(
   return { glb, attached, total: totalCandidates };
 }
 
-
 function computeBBox(
   nodes: Node[],
 ): { min: [number, number, number]; max: [number, number, number] } | null {
@@ -135,13 +135,18 @@ function computeBBox(
         const arr = pos.getArray();
         if (!arr) continue;
         for (let i = 0; i < arr.length; i += 3) {
-          const x = arr[i], y = arr[i + 1], z = arr[i + 2];
+          const x = arr[i],
+            y = arr[i + 1],
+            z = arr[i + 2];
           const tx = m[0] * x + m[4] * y + m[8] * z + m[12];
           const ty = m[1] * x + m[5] * y + m[9] * z + m[13];
           const tz = m[2] * x + m[6] * y + m[10] * z + m[14];
-          if (tx < min[0]) min[0] = tx; if (tx > max[0]) max[0] = tx;
-          if (ty < min[1]) min[1] = ty; if (ty > max[1]) max[1] = ty;
-          if (tz < min[2]) min[2] = tz; if (tz > max[2]) max[2] = tz;
+          if (tx < min[0]) min[0] = tx;
+          if (tx > max[0]) max[0] = tx;
+          if (ty < min[1]) min[1] = ty;
+          if (ty > max[1]) max[1] = ty;
+          if (tz < min[2]) min[2] = tz;
+          if (tz > max[2]) max[2] = tz;
           any = true;
         }
       }
@@ -163,14 +168,32 @@ function nodeMatrix(n: Node): number[] {
   const r = n.getRotation(); // quaternion x,y,z,w
   const s = n.getScale();
   const [x, y, z, w] = r;
-  const xx = x * x, yy = y * y, zz = z * z;
-  const xy = x * y, xz = x * z, yz = y * z;
-  const wx = w * x, wy = w * y, wz = w * z;
+  const xx = x * x,
+    yy = y * y,
+    zz = z * z;
+  const xy = x * y,
+    xz = x * z,
+    yz = y * z;
+  const wx = w * x,
+    wy = w * y,
+    wz = w * z;
   return [
-    (1 - 2 * (yy + zz)) * s[0], (2 * (xy + wz)) * s[0], (2 * (xz - wy)) * s[0], 0,
-    (2 * (xy - wz)) * s[1], (1 - 2 * (xx + zz)) * s[1], (2 * (yz + wx)) * s[1], 0,
-    (2 * (xz + wy)) * s[2], (2 * (yz - wx)) * s[2], (1 - 2 * (xx + yy)) * s[2], 0,
-    t[0], t[1], t[2], 1,
+    (1 - 2 * (yy + zz)) * s[0],
+    2 * (xy + wz) * s[0],
+    2 * (xz - wy) * s[0],
+    0,
+    2 * (xy - wz) * s[1],
+    (1 - 2 * (xx + zz)) * s[1],
+    2 * (yz + wx) * s[1],
+    0,
+    2 * (xz + wy) * s[2],
+    2 * (yz - wx) * s[2],
+    (1 - 2 * (xx + yy)) * s[2],
+    0,
+    t[0],
+    t[1],
+    t[2],
+    1,
   ];
 }
 

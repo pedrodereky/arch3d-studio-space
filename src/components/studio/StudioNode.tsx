@@ -22,9 +22,7 @@ export function StudioNode({ id, data, selected }: NodeProps) {
   const preview = d.resultUrl ?? d.signedUrl;
 
   // Conta arestas que chegam neste nó (entradas conectadas)
-  const incomingCount = useStore(
-    (s) => s.edges.filter((e) => e.target === id).length,
-  );
+  const incomingCount = useStore((s) => s.edges.filter((e) => e.target === id).length);
 
   const needsConnection = meta.minInputs > 0 && incomingCount < meta.minInputs;
   const inputMissing = meta.isInput && !d.signedUrl;
@@ -123,9 +121,7 @@ export function StudioNode({ id, data, selected }: NodeProps) {
           >
             <ImageIcon className="h-6 w-6 text-muted-foreground/40" strokeWidth={1.5} />
             {meta.isInput && !d.signedUrl && (
-              <span className="text-[10px] text-muted-foreground">
-                clique para selecionar
-              </span>
+              <span className="text-[10px] text-muted-foreground">clique para selecionar</span>
             )}
             {needsConnection && (
               <span className="text-[10px] font-medium text-amber-600">
@@ -136,12 +132,12 @@ export function StudioNode({ id, data, selected }: NodeProps) {
           </div>
         )}
 
-        {d.prompt && (
-          <p className="line-clamp-2 text-[11px] text-muted-foreground">{d.prompt}</p>
-        )}
+        {d.prompt && <p className="line-clamp-2 text-[11px] text-muted-foreground">{d.prompt}</p>}
 
         {d.errorMessage && (
-          <p className="rounded bg-destructive/10 px-2 py-1 text-[10px] text-destructive">{d.errorMessage}</p>
+          <p className="rounded bg-destructive/10 px-2 py-1 text-[10px] text-destructive">
+            {d.errorMessage}
+          </p>
         )}
       </div>
     </div>

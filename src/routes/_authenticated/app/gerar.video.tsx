@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Video, Loader2, ImageOff, CheckCircle2 } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { qk } from "@/lib/query-keys";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { GerarVideoDialog } from "@/components/biblioteca/GerarVideoDialog";
@@ -21,51 +24,49 @@ type RenderRow = {
 function GerarVideoPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [renders, setRenders] = useState<RenderRow[]>([]);
-  const [withVideo, setWithVideo] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<RenderRow | null>(null);
 
-  useEffect(() => {
-    if (!user) return;
-    let active = true;
-    (async () => {
-      setLoading(true);
-      const { data: r } = await supabase
+  const { data, isPending, error } = useQuery({
+    queryKey: qk.generationsList({ view: "video-source", userId: user?.id }),
+    enabled: !!user,
+    queryFn: async () => {
+      const { data: r, error: rErr } = await supabase
         .from("generations")
         .select("id,thumbnail_url,final_render_url,prompt,created_at")
-        .eq("user_id", user.id)
+        .eq("user_id", user!.id)
         .eq("pipeline_type", "floorplan_render")
         .eq("status", "succeeded")
         .order("created_at", { ascending: false });
+      if (rErr) throw new Error(rErr.message);
 
       const list = (r ?? []) as RenderRow[];
 
       // identifica renders que já têm vídeo derivado
-      const ids = list.map((g) => g.id);
-      let videoSet = new Set<string>();
-      if (ids.length) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: vids } = await (supabase as any)
+      const videoSet = new Set<string>();
+      if (list.length) {
+        const { data: vids, error: vErr } = await supabase
           .from("generations")
           .select("metadata")
-          .eq("user_id", user.id)
+          .eq("user_id", user!.id)
           .eq("pipeline_type", "render_to_video");
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        for (const v of (vids ?? []) as any[]) {
-          const src = v?.metadata?.source_generation_id;
+        if (vErr) throw new Error(vErr.message);
+        for (const v of vids ?? []) {
+          const src = (v.metadata as { source_generation_id?: unknown } | null)
+            ?.source_generation_id;
           if (typeof src === "string") videoSet.add(src);
         }
       }
-      if (!active) return;
-      setRenders(list);
-      setWithVideo(videoSet);
-      setLoading(false);
-    })();
-    return () => {
-      active = false;
-    };
-  }, [user]);
+      return { renders: list, withVideo: videoSet };
+    },
+  });
+
+  const renders = useMemo(() => data?.renders ?? [], [data]);
+  const withVideo = useMemo(() => data?.withVideo ?? new Set<string>(), [data]);
+  const loading = isPending && !!user;
+
+  useEffect(() => {
+    if (error) toast.error("Erro ao carregar renders", { description: error.message });
+  }, [error]);
 
   const empty = useMemo(() => !loading && renders.length === 0, [loading, renders]);
 
@@ -74,8 +75,8 @@ function GerarVideoPage() {
       <header className="mb-8">
         <h1 className="text-3xl font-black text-foreground">Vídeo POV</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Selecione um render de planta para gerar um vídeo em primeira pessoa.
-          15 segundos · 1080p · 16:9 · modelo Happyhorse 1.0.
+          Selecione um render de planta para gerar um vídeo em primeira pessoa. 15 segundos · 1080p
+          · 16:9 · modelo Happyhorse 1.0.
         </p>
       </header>
 

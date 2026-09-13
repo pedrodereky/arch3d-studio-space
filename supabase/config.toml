@@ -1,1 +1,13 @@
 project_id = "edikojlhcttxbeskmehe"
+
+# O Replicate chama este endpoint sem JWT — ele se autentica por assinatura HMAC
+# (spec standard-webhooks), verificada em replicate-webhook/index.ts. Com a
+# verificação de JWT ligada, o gateway rejeita a chamada antes de a função rodar
+# e nenhuma geração 3D chega a ser finalizada.
+[functions.replicate-webhook]
+verify_jwt = false
+
+# As demais functions validam o caller por conta própria (getUserId + 403 quando
+# o recurso é de outro usuário) e não estão declaradas aqui de propósito: elas
+# seguem o padrão do CLI e a configuração já aplicada no projeto. Ver
+# supabase/README.md antes de mudar isso.

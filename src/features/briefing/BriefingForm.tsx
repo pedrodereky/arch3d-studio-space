@@ -1,10 +1,5 @@
 import type { Briefing, ExtraId } from "./types";
-import {
-  TIPOLOGIA_OPTIONS,
-  ESTILO_OPTIONS,
-  EXTRA_OPTIONS,
-  composeBriefingPreview,
-} from "./types";
+import { TIPOLOGIA_OPTIONS, ESTILO_OPTIONS, EXTRA_OPTIONS, composeBriefingPreview } from "./types";
 import { Loader2 } from "lucide-react";
 
 type Props = {
@@ -15,8 +10,7 @@ type Props = {
 };
 
 export function BriefingForm({ value, onChange, submitting, onSubmit }: Props) {
-  const update = <K extends keyof Briefing>(k: K, v: Briefing[K]) =>
-    onChange({ ...value, [k]: v });
+  const update = <K extends keyof Briefing>(k: K, v: Briefing[K]) => onChange({ ...value, [k]: v });
 
   const toggleExtra = (id: ExtraId) => {
     const has = value.extras.includes(id);
@@ -159,11 +153,7 @@ export function BriefingForm({ value, onChange, submitting, onSubmit }: Props) {
           disabled={submitting}
           className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-primary px-7 text-[12px] font-black uppercase tracking-[0.08em] text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {submitting ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            "Gerar plantas baixas"
-          )}
+          {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Gerar plantas baixas"}
         </button>
         <p className="mt-2 text-center text-xs font-normal text-muted-foreground">
           ≈ 30–60s · 4 propostas

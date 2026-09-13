@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Loader2, User as UserIcon, KeyRound, DollarSign } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,35 +21,29 @@ function ContaPage() {
   const [pwd2, setPwd2] = useState("");
   const [savingPwd, setSavingPwd] = useState(false);
 
-  const [monthCost, setMonthCost] = useState<number | null>(null);
-  const [monthCount, setMonthCount] = useState<number | null>(null);
+  const { data: usage } = useQuery({
+    queryKey: ["conta-usage", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const since = new Date();
+      since.setDate(since.getDate() - 30);
+      const { data, count, error } = await supabase
+        .from("generations")
+        .select("cost_usd, status", { count: "exact" })
+        .eq("user_id", user!.id)
+        .eq("status", "succeeded")
+        .gte("created_at", since.toISOString());
+      if (error) throw new Error(error.message);
+      const sum = (data ?? []).reduce(
+        (acc, r) => acc + Number((r as { cost_usd: number | null }).cost_usd ?? 0),
+        0,
+      );
+      return { monthCost: sum, monthCount: count ?? 0 };
+    },
+  });
 
-  useEffect(() => {
-    if (!profile) return;
-    setFullName(profile.full_name ?? "");
-    setCau(profile.cau_number ?? "");
-    setOffice(profile.office_name ?? "");
-  }, [profile]);
-
-  useEffect(() => {
-    if (!user) return;
-    const since = new Date();
-    since.setDate(since.getDate() - 30);
-    void supabase
-      .from("generations")
-      .select("cost_usd, status", { count: "exact" })
-      .eq("user_id", user.id)
-      .eq("status", "succeeded")
-      .gte("created_at", since.toISOString())
-      .then(({ data, count }) => {
-        const sum = (data ?? []).reduce(
-          (acc, r) => acc + Number((r as { cost_usd: number | null }).cost_usd ?? 0),
-          0,
-        );
-        setMonthCost(sum);
-        setMonthCount(count ?? 0);
-      });
-  }, [user]);
+  const monthCost = usage?.monthCost ?? null;
+  const monthCount = usage?.monthCount ?? null;
 
   async function saveProfile(e: React.FormEvent) {
     e.preventDefault();
@@ -97,9 +92,7 @@ function ContaPage() {
     <div className="mx-auto max-w-[820px] space-y-10">
       <header>
         <h1 className="text-3xl font-black tracking-tight text-foreground">Conta</h1>
-        <p className="mt-2 font-light text-muted-foreground">
-          Seus dados, senha e consumo do mês.
-        </p>
+        <p className="mt-2 font-light text-muted-foreground">Seus dados, senha e consumo do mês.</p>
       </header>
 
       {/* Consumo */}
@@ -140,9 +133,7 @@ function ContaPage() {
           <form onSubmit={saveProfile} className="flex-1 space-y-4">
             <div>
               <h2 className="text-xl font-black tracking-tight text-foreground">Dados pessoais</h2>
-              <p className="mt-1 text-xs font-light text-muted-foreground">
-                Email: {user?.email}
-              </p>
+              <p className="mt-1 text-xs font-light text-muted-foreground">Email: {user?.email}</p>
             </div>
             <Field label="Nome completo">
               <input

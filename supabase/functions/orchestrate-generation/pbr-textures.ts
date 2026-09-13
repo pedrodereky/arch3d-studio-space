@@ -33,10 +33,7 @@ const PROMPTS: Record<TextureKey, string> = {
     "seamless tileable PBR base color texture of polished light grey concrete floor, very subtle stains, top-down orthographic, neutral lighting, no shadows, no perspective, 4k photorealistic, repeating pattern",
 };
 
-export async function generateTexture(
-  apiKey: string,
-  key: TextureKey,
-): Promise<Uint8Array> {
+export async function generateTexture(apiKey: string, key: TextureKey): Promise<Uint8Array> {
   const r = await fetch(GATEWAY, {
     method: "POST",
     headers: {
@@ -54,8 +51,7 @@ export async function generateTexture(
     throw new Error(`texture ${key} ${r.status}: ${t.slice(0, 300)}`);
   }
   const json = await r.json();
-  const url: string | undefined =
-    json?.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+  const url: string | undefined = json?.choices?.[0]?.message?.images?.[0]?.image_url?.url;
   if (!url || !url.startsWith("data:")) {
     throw new Error(`texture ${key}: sem image url`);
   }
