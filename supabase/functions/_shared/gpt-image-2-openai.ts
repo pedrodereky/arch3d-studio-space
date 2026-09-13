@@ -5,7 +5,12 @@
 const ENDPOINT = "https://api.openai.com/v1/images/edits";
 
 export type OpenAIGptImage2Input = {
-  bytes: Uint8Array;
+  // Uint8Array<ArrayBuffer>, e não o Uint8Array genérico: a partir do
+  // TypeScript 5.7 ele é parametrizado pelo buffer, e `BlobPart` (usado no
+  // `new File([...])` abaixo) não aceita ArrayBufferLike, que inclui
+  // SharedArrayBuffer. Quem chama monta os bytes com `new Uint8Array(...)`,
+  // que já satisfaz isto.
+  bytes: Uint8Array<ArrayBuffer>;
   mime: string;
   filename?: string;
 };
@@ -39,7 +44,7 @@ export async function callGptImage2OpenAI(
   inputImages: OpenAIGptImage2Input[],
   prompt: string,
   opts: OpenAIGptImage2Opts = {},
-): Promise<{ bytes: Uint8Array; mime: string }> {
+): Promise<{ bytes: Uint8Array<ArrayBuffer>; mime: string }> {
   const aspect = opts.aspect_ratio ?? "1:1";
   const size = SIZE_BY_RATIO[aspect] ?? "1024x1024";
   const quality = opts.quality ?? "high";
