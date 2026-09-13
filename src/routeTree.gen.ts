@@ -23,6 +23,7 @@ import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticated/app/index'
+import { Route as ApiCronStuckGenerationsRouteImport } from './routes/api/cron/stuck-generations'
 import { Route as AuthenticatedAppTransparenciaRouteImport } from './routes/_authenticated/app/transparencia'
 import { Route as AuthenticatedAppStudioRouteImport } from './routes/_authenticated/app/studio'
 import { Route as AuthenticatedAppProjetosRouteImport } from './routes/_authenticated/app/projetos'
@@ -113,6 +114,11 @@ const AuthenticatedAppIndexRoute = AuthenticatedAppIndexRouteImport.update({
   id: '/app/',
   path: '/app/',
   getParentRoute: () => AuthenticatedRoute,
+} as any)
+const ApiCronStuckGenerationsRoute = ApiCronStuckGenerationsRouteImport.update({
+  id: '/api/cron/stuck-generations',
+  path: '/api/cron/stuck-generations',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAppTransparenciaRoute =
   AuthenticatedAppTransparenciaRouteImport.update({
@@ -248,6 +254,7 @@ export interface FileRoutesByFullPath {
   '/app/projetos': typeof AuthenticatedAppProjetosRouteWithChildren
   '/app/studio': typeof AuthenticatedAppStudioRoute
   '/app/transparencia': typeof AuthenticatedAppTransparenciaRoute
+  '/api/cron/stuck-generations': typeof ApiCronStuckGenerationsRoute
   '/app/': typeof AuthenticatedAppIndexRoute
   '/admin/diagnostico/$generationId': typeof AuthenticatedAdminDiagnosticoGenerationIdRoute
   '/app/gerar/analise': typeof AuthenticatedAppGerarAnaliseRoute
@@ -282,6 +289,7 @@ export interface FileRoutesByTo {
   '/app/projetos': typeof AuthenticatedAppProjetosRouteWithChildren
   '/app/studio': typeof AuthenticatedAppStudioRoute
   '/app/transparencia': typeof AuthenticatedAppTransparenciaRoute
+  '/api/cron/stuck-generations': typeof ApiCronStuckGenerationsRoute
   '/app': typeof AuthenticatedAppIndexRoute
   '/admin/diagnostico/$generationId': typeof AuthenticatedAdminDiagnosticoGenerationIdRoute
   '/app/gerar/analise': typeof AuthenticatedAppGerarAnaliseRoute
@@ -318,6 +326,7 @@ export interface FileRoutesById {
   '/_authenticated/app/projetos': typeof AuthenticatedAppProjetosRouteWithChildren
   '/_authenticated/app/studio': typeof AuthenticatedAppStudioRoute
   '/_authenticated/app/transparencia': typeof AuthenticatedAppTransparenciaRoute
+  '/api/cron/stuck-generations': typeof ApiCronStuckGenerationsRoute
   '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
   '/_authenticated/admin/diagnostico/$generationId': typeof AuthenticatedAdminDiagnosticoGenerationIdRoute
   '/_authenticated/app/gerar/analise': typeof AuthenticatedAppGerarAnaliseRoute
@@ -354,6 +363,7 @@ export interface FileRouteTypes {
     | '/app/projetos'
     | '/app/studio'
     | '/app/transparencia'
+    | '/api/cron/stuck-generations'
     | '/app/'
     | '/admin/diagnostico/$generationId'
     | '/app/gerar/analise'
@@ -388,6 +398,7 @@ export interface FileRouteTypes {
     | '/app/projetos'
     | '/app/studio'
     | '/app/transparencia'
+    | '/api/cron/stuck-generations'
     | '/app'
     | '/admin/diagnostico/$generationId'
     | '/app/gerar/analise'
@@ -423,6 +434,7 @@ export interface FileRouteTypes {
     | '/_authenticated/app/projetos'
     | '/_authenticated/app/studio'
     | '/_authenticated/app/transparencia'
+    | '/api/cron/stuck-generations'
     | '/_authenticated/app/'
     | '/_authenticated/admin/diagnostico/$generationId'
     | '/_authenticated/app/gerar/analise'
@@ -450,6 +462,7 @@ export interface RootRouteChildren {
   PTokenRoute: typeof PTokenRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
+  ApiCronStuckGenerationsRoute: typeof ApiCronStuckGenerationsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -551,6 +564,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/'
       preLoaderRoute: typeof AuthenticatedAppIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
+    }
+    '/api/cron/stuck-generations': {
+      id: '/api/cron/stuck-generations'
+      path: '/api/cron/stuck-generations'
+      fullPath: '/api/cron/stuck-generations'
+      preLoaderRoute: typeof ApiCronStuckGenerationsRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/app/transparencia': {
       id: '/_authenticated/app/transparencia'
@@ -776,6 +796,7 @@ const rootRouteChildren: RootRouteChildren = {
   PTokenRoute: PTokenRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
+  ApiCronStuckGenerationsRoute: ApiCronStuckGenerationsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
