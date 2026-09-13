@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { qk } from "@/lib/query-keys";
 import { Loader2, ChevronRight, AlertCircle } from "lucide-react";
 import { PIPELINE_TYPES, pipelineLabel, type PipelineType } from "@/lib/pipeline-labels";
 
@@ -26,17 +28,16 @@ type Status = (typeof STATUS_FILTERS)[number];
 const ROW_LIMIT = 50;
 
 function DiagnosticoListPage() {
-  const [rows, setRows] = useState<Row[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Status>("all");
   const [pipeline, setPipeline] = useState<PipelineType | "all">("all");
 
-  useEffect(() => {
-    let alive = true;
-    setLoading(true);
-    setError(null);
-    (async () => {
+  const {
+    data: rows = [],
+    isPending: loading,
+    error: queryError,
+  } = useQuery({
+    queryKey: qk.generationsList({ view: "diagnostico", filter, pipeline }),
+    queryFn: async () => {
       let q = supabase
         .from("generations")
         .select(
@@ -46,23 +47,15 @@ function DiagnosticoListPage() {
         .limit(ROW_LIMIT);
       if (filter !== "all") q = q.eq("status", filter);
       if (pipeline !== "all") q = q.eq("pipeline_type", pipeline);
-      const { data, error: queryError } = await q;
-      if (!alive) return;
-      // Erro visível: antes ia só para o console e a tela dizia "nenhuma
+      const { data, error } = await q;
+      // Erro vira rejeição: antes ia só para o console e a tela dizia "nenhuma
       // geração encontrada", que é uma resposta diferente de "a query falhou".
-      if (queryError) {
-        setError(queryError.message);
-        setRows([]);
-        setLoading(false);
-        return;
-      }
-      setRows((data ?? []) as Row[]);
-      setLoading(false);
-    })();
-    return () => {
-      alive = false;
-    };
-  }, [filter, pipeline]);
+      if (error) throw new Error(error.message);
+      return (data ?? []) as Row[];
+    },
+  });
+
+  const error = queryError?.message ?? null;
 
   return (
     <div className="space-y-6">

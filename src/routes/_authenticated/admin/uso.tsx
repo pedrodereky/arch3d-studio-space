@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Loader2, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { qk } from "@/lib/query-keys";
 
 export const Route = createFileRoute("/_authenticated/admin/uso")({
   component: UsoPage,
@@ -37,23 +39,20 @@ const money = (v: number) => `$ ${v.toFixed(2)}`;
 
 function UsoPage() {
   const [days, setDays] = useState<number>(30);
-  const [costs, setCosts] = useState<CostRow[]>([]);
-  const [gens, setGens] = useState<GenRow[]>([]);
-  const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [truncated, setTruncated] = useState(false);
 
-  useEffect(() => {
-    let alive = true;
-    setLoading(true);
-    setError(null);
+  const {
+    data,
+    isPending: loading,
+    error: queryError,
+  } = useQuery({
+    // A chave inclui o período: trocar 7/30/90 vira outra entrada de cache, e
+    // voltar para um período já visto é instantâneo.
+    queryKey: qk.apiCosts(days),
+    queryFn: async () => {
+      const since = new Date();
+      since.setDate(since.getDate() - days);
+      const sinceIso = since.toISOString();
 
-    const since = new Date();
-    since.setDate(since.getDate() - days);
-    const sinceIso = since.toISOString();
-
-    void (async () => {
       const [costRes, genRes, profRes] = await Promise.all([
         supabase
           .from("api_costs")
@@ -68,30 +67,25 @@ function UsoPage() {
         supabase.from("profiles").select("id,full_name,office_name"),
       ]);
 
-      if (!alive) return;
-
-      // Erro visível: sem isso a página mostraria zeros e pareceria "sem uso",
-      // quando na verdade a query falhou (RLS, rede, permissão).
       const firstError = costRes.error ?? genRes.error ?? profRes.error;
-      if (firstError) {
-        setError(firstError.message);
-        setLoading(false);
-        return;
-      }
+      if (firstError) throw new Error(firstError.message);
 
       const costRows = (costRes.data ?? []) as CostRow[];
       const genRows = (genRes.data ?? []) as GenRow[];
-      setCosts(costRows);
-      setGens(genRows);
-      setProfiles((profRes.data ?? []) as Profile[]);
-      setTruncated(costRows.length >= ROW_CAP || genRows.length >= ROW_CAP);
-      setLoading(false);
-    })();
+      return {
+        costs: costRows,
+        gens: genRows,
+        profiles: (profRes.data ?? []) as Profile[],
+        truncated: costRows.length >= ROW_CAP || genRows.length >= ROW_CAP,
+      };
+    },
+  });
 
-    return () => {
-      alive = false;
-    };
-  }, [days]);
+  const error = queryError?.message ?? null;
+  const costs = useMemo(() => data?.costs ?? [], [data]);
+  const gens = useMemo(() => data?.gens ?? [], [data]);
+  const profiles = useMemo(() => data?.profiles ?? [], [data]);
+  const truncated = data?.truncated ?? false;
 
   const stats = useMemo(() => {
     const totalCost = costs.reduce((acc, r) => acc + Number(r.cost_usd ?? 0), 0);
