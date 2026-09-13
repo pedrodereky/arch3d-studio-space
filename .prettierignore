@@ -15,3 +15,6 @@ src/integrations/supabase
 src/routes/mcp.ts
 src/routes/\[.mcp\]
 src/routes/\[.well-known\]
+
+# Pranchas de design — formato .dc.html tem exigências próprias
+design/mockups

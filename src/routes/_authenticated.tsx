@@ -5,11 +5,11 @@ import {
   useNavigate,
   Link,
   useLocation,
+  useMatches,
 } from "@tanstack/react-router";
 import {
   Loader2,
   Home,
-  Sparkles,
   Library,
   FolderOpen,
   User,
@@ -17,7 +17,6 @@ import {
   Shield,
   Box,
   Map,
-  ChevronDown,
   ShieldCheck,
   Video,
   Workflow,
@@ -25,9 +24,11 @@ import {
   Type,
   ImageUp,
   Menu,
+  Plus,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
+import "@/lib/route-static-data";
 import { Wordmark } from "@/components/brand/Wordmark";
 import { GenerationNotifier } from "@/components/notifications/GenerationNotifier";
 import {
@@ -45,18 +46,18 @@ export const Route = createFileRoute("/_authenticated")({
 });
 
 type NavLeaf = { to: string; label: string; icon: typeof Home; exact?: boolean };
-type NavGroup = { label: string; icon: typeof Home; matchPrefix: string; children: NavLeaf[] };
-type NavEntry = NavLeaf | NavGroup;
+type NavSection = { label?: string; items: NavLeaf[] };
 
-const isGroup = (e: NavEntry): e is NavGroup => "children" in e;
-
-const navItems: NavEntry[] = [
-  { to: "/app", label: "Dashboard", icon: Home, exact: true },
+/**
+ * Seções planas, sem grupo colapsável: a navegação tem a mesma forma em toda
+ * tela e só o item ativo muda. O acordeão anterior reorganizava a lista
+ * conforme a rota, que é o oposto de previsível.
+ */
+const navSections: NavSection[] = [
+  { items: [{ to: "/app", label: "Dashboard", icon: Home, exact: true }] },
   {
     label: "Gerar",
-    icon: Sparkles,
-    matchPrefix: "/app/gerar",
-    children: [
+    items: [
       { to: "/app/gerar", label: "Objetos 3D", icon: Box, exact: true },
       { to: "/app/gerar/redecorar", label: "Redecorar", icon: Wand2 },
       { to: "/app/gerar/briefing", label: "Briefing → Planta 2D", icon: Type },
@@ -65,11 +66,15 @@ const navItems: NavEntry[] = [
       { to: "/app/gerar/video", label: "Vídeo POV", icon: Video },
     ],
   },
-  { to: "/app/studio", label: "Studio", icon: Workflow },
-  { to: "/app/biblioteca", label: "Biblioteca", icon: Library },
-  { to: "/app/projetos", label: "Projetos", icon: FolderOpen },
-  { to: "/app/transparencia", label: "Transparência IA", icon: ShieldCheck },
-  { to: "/app/conta", label: "Conta", icon: User },
+  {
+    items: [
+      { to: "/app/studio", label: "Studio", icon: Workflow },
+      { to: "/app/biblioteca", label: "Biblioteca", icon: Library },
+      { to: "/app/projetos", label: "Projetos", icon: FolderOpen },
+      { to: "/app/transparencia", label: "Transparência IA", icon: ShieldCheck },
+      { to: "/app/conta", label: "Conta", icon: User },
+    ],
+  },
 ];
 
 const adminItems: NavLeaf[] = [
@@ -79,13 +84,30 @@ const adminItems: NavLeaf[] = [
   { to: "/admin/diagnostico", label: "Diagnóstico", icon: Shield },
 ];
 
+const isActive = (item: NavLeaf, pathname: string) =>
+  item.exact ? pathname === item.to : pathname.startsWith(item.to);
+
+/** Rótulo da tela atual, para o header não ficar sem contexto. */
+function currentLabel(pathname: string): string {
+  const all = [...navSections.flatMap((s) => s.items), ...adminItems];
+  // Do mais específico para o mais genérico, senão "/app" casaria com tudo.
+  const match = [...all]
+    .sort((a, b) => b.to.length - a.to.length)
+    .find((item) => isActive(item, pathname));
+  return match?.label ?? "Arq3D Studio";
+}
+
 function AuthenticatedLayout() {
   const { user, profile, isLoading, isAdmin, setupCompleted, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const matches = useMatches();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // Fecha o menu mobile sempre que a rota muda (inclui navegação por voltar/avançar).
+  // Telas com trilho lateral pedem o `main` sem padding; elas mesmas dizem.
+  const fullBleed = matches.some((m) => m.staticData?.fullBleed);
+
+  // Fecha o menu mobile sempre que a rota muda (inclui voltar/avançar).
   useEffect(() => {
     setMenuOpen(false);
   }, [location.pathname]);
@@ -114,19 +136,60 @@ function AuthenticatedLayout() {
     .slice(0, 2)
     .toUpperCase();
 
+  const userMenu = (
+    <DropdownMenu>
+      <DropdownMenuTrigger className="flex w-full items-center gap-3 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-bold uppercase tracking-wide text-primary-foreground">
+          {initials}
+        </span>
+        <span className="flex min-w-0 flex-col leading-tight">
+          <span className="truncate text-[13px] font-medium text-foreground">
+            {profile?.full_name ?? user.email}
+          </span>
+          {profile?.cau_number && (
+            <span className="truncate text-[11px] font-light text-muted-foreground">
+              CAU {profile.cau_number}
+            </span>
+          )}
+        </span>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-56">
+        <DropdownMenuLabel>
+          <div className="flex flex-col">
+            <span className="font-medium">{profile?.full_name ?? "—"}</span>
+            <span className="text-xs font-normal text-muted-foreground">{user.email}</span>
+          </div>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => navigate({ to: "/app/conta" })}>
+          <User className="mr-2 h-4 w-4" /> Conta
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={async () => {
+            await signOut();
+            navigate({ to: "/" });
+          }}
+        >
+          <LogOut className="mr-2 h-4 w-4" /> Sair
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
   return (
     <div className="flex min-h-screen bg-background">
       {/* Sidebar — desktop */}
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-white/5 bg-primary text-primary-foreground md:flex">
-        <div className="flex h-16 items-center border-b border-white/5 px-6">
-          <Wordmark className="text-primary-foreground" />
+      <aside className="hidden w-[244px] shrink-0 flex-col border-r border-border/60 bg-card md:flex">
+        <div className="flex h-[76px] items-center border-b border-border/60 px-6">
+          <Wordmark className="text-primary" />
         </div>
         <SidebarNav pathname={location.pathname} isAdmin={isAdmin} />
+        <div className="border-t border-border/60 p-3">{userMenu}</div>
       </aside>
 
       {/* Main */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-16 items-center gap-3 border-b border-border bg-background px-4 md:px-6">
+        <header className="flex h-[76px] shrink-0 items-center gap-3 border-b border-border/60 px-4 md:px-10">
           {/* Navegação mobile */}
           <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
             <SheetTrigger
@@ -135,19 +198,17 @@ function AuthenticatedLayout() {
             >
               <Menu className="h-5 w-5" strokeWidth={1.75} />
             </SheetTrigger>
-            <SheetContent
-              side="left"
-              className="w-72 border-white/5 bg-primary p-0 text-primary-foreground"
-            >
+            <SheetContent side="left" className="flex w-72 flex-col border-border/60 bg-card p-0">
               <SheetTitle className="sr-only">Navegação</SheetTitle>
-              <div className="flex h-16 items-center border-b border-white/5 px-6">
-                <Wordmark className="text-primary-foreground" />
+              <div className="flex h-[76px] shrink-0 items-center border-b border-border/60 px-6">
+                <Wordmark className="text-primary" />
               </div>
               <SidebarNav
                 pathname={location.pathname}
                 isAdmin={isAdmin}
                 onNavigate={() => setMenuOpen(false)}
               />
+              <div className="shrink-0 border-t border-border/60 p-3">{userMenu}</div>
             </SheetContent>
           </Sheet>
 
@@ -155,33 +216,19 @@ function AuthenticatedLayout() {
             <Wordmark className="text-primary" />
           </div>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger className="ml-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-bold uppercase tracking-wide text-primary-foreground">
-              {initials}
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>
-                <div className="flex flex-col">
-                  <span className="font-medium">{profile?.full_name ?? "—"}</span>
-                  <span className="text-xs font-normal text-muted-foreground">{user.email}</span>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => navigate({ to: "/app/conta" })}>
-                <User className="mr-2 h-4 w-4" /> Conta
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={async () => {
-                  await signOut();
-                  navigate({ to: "/" });
-                }}
-              >
-                <LogOut className="mr-2 h-4 w-4" /> Sair
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <span className="hidden text-sm font-medium text-foreground md:inline">
+            {currentLabel(location.pathname)}
+          </span>
+
+          <Link
+            to="/app/gerar"
+            className="ml-auto inline-flex h-11 shrink-0 items-center gap-2 rounded-full bg-primary px-5 text-[11px] font-black uppercase tracking-[0.12em] text-primary-foreground transition-colors hover:bg-primary/90 md:px-6"
+          >
+            <Plus className="h-4 w-4" strokeWidth={2} />
+            <span className="hidden sm:inline">Gerar</span>
+          </Link>
         </header>
-        <main className="flex-1 p-4 md:p-8">
+        <main className={fullBleed ? "flex min-w-0 flex-1 flex-col" : "flex-1 p-4 md:p-10"}>
           <Outlet />
         </main>
       </div>
@@ -200,114 +247,54 @@ function SidebarNav({
   isAdmin: boolean;
   onNavigate?: () => void;
 }) {
+  const itemClass = (active: boolean) =>
+    `flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${
+      active ? "bg-accent font-medium text-accent-foreground" : "text-foreground hover:bg-muted"
+    }`;
+
   return (
-    <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-      {navItems.map((item) => {
-        if (isGroup(item)) {
-          return (
-            <NavGroupItem
-              key={item.label}
-              group={item}
-              pathname={pathname}
-              onNavigate={onNavigate}
-            />
-          );
-        }
-        const active = item.exact ? pathname === item.to : pathname.startsWith(item.to);
-        return (
-          <Link
-            key={item.to}
-            to={item.to}
-            onClick={onNavigate}
-            className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${
-              active
-                ? "bg-white/10 text-primary-foreground"
-                : "text-primary-foreground/70 hover:bg-white/5 hover:text-primary-foreground"
-            }`}
-          >
-            <item.icon className="h-4 w-4" strokeWidth={1.75} />
-            {item.label}
-          </Link>
-        );
-      })}
+    <nav className="flex-1 overflow-y-auto px-3.5 py-5">
+      {navSections.map((section, i) => (
+        <div key={section.label ?? i} className={i > 0 ? "mt-4" : undefined}>
+          {section.label && (
+            <div className="px-3 pb-2 pt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+              {section.label}
+            </div>
+          )}
+          <div className="flex flex-col gap-0.5">
+            {section.items.map((item) => {
+              const active = isActive(item, pathname);
+              return (
+                <Link key={item.to} to={item.to} onClick={onNavigate} className={itemClass(active)}>
+                  <item.icon className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden="true" />
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+
       {isAdmin && (
-        <>
-          <div className="px-3 pt-6 pb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-primary-foreground/40">
+        <div className="mt-4">
+          <div className="px-3 pb-2 pt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
             Admin
           </div>
-          {adminItems.map((item) => (
-            <Link
-              key={item.to}
-              to={item.to}
-              onClick={onNavigate}
-              className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${
-                pathname.startsWith(item.to)
-                  ? "bg-white/10 text-primary-foreground"
-                  : "text-primary-foreground/70 hover:bg-white/5 hover:text-primary-foreground"
-              }`}
-            >
-              <item.icon className="h-4 w-4" strokeWidth={1.75} /> {item.label}
-            </Link>
-          ))}
-        </>
-      )}
-    </nav>
-  );
-}
-
-function NavGroupItem({
-  group,
-  pathname,
-  onNavigate,
-}: {
-  group: NavGroup;
-  pathname: string;
-  onNavigate?: () => void;
-}) {
-  const matches = pathname.startsWith(group.matchPrefix);
-  const [open, setOpen] = useState(matches);
-  const expanded = open || matches;
-  return (
-    <div>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={expanded}
-        className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${
-          matches
-            ? "bg-white/10 text-primary-foreground"
-            : "text-primary-foreground/70 hover:bg-white/5 hover:text-primary-foreground"
-        }`}
-      >
-        <group.icon className="h-4 w-4" strokeWidth={1.75} />
-        <span className="flex-1 text-left">{group.label}</span>
-        <ChevronDown
-          className={`h-3.5 w-3.5 transition-transform ${expanded ? "rotate-180" : ""}`}
-          strokeWidth={2}
-        />
-      </button>
-      {expanded && (
-        <div className="ml-4 mt-1 space-y-0.5 border-l border-white/10 pl-3">
-          {group.children.map((child) => {
-            const active = child.exact ? pathname === child.to : pathname.startsWith(child.to);
-            return (
+          <div className="flex flex-col gap-0.5">
+            {adminItems.map((item) => (
               <Link
-                key={child.to}
-                to={child.to}
+                key={item.to}
+                to={item.to}
                 onClick={onNavigate}
-                className={`flex items-center gap-3 rounded-md px-3 py-1.5 text-sm transition-colors ${
-                  active
-                    ? "bg-white/10 text-primary-foreground"
-                    : "text-primary-foreground/60 hover:bg-white/5 hover:text-primary-foreground"
-                }`}
+                className={itemClass(pathname.startsWith(item.to))}
               >
-                <child.icon className="h-3.5 w-3.5" strokeWidth={1.75} />
-                {child.label}
+                <item.icon className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden="true" />
+                {item.label}
               </Link>
-            );
-          })}
+            ))}
+          </div>
         </div>
       )}
-    </div>
+    </nav>
   );
 }

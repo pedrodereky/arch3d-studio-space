@@ -81,6 +81,8 @@ export const Route = createFileRoute("/_authenticated/app/studio")({
   validateSearch: (s: Record<string, unknown>): StudioSearch => ({
     fromGeneration: typeof s.fromGeneration === "string" ? s.fromGeneration : undefined,
   }),
+  // A tela é um canvas de borda a borda; o shell entrega o `main` sem padding.
+  staticData: { fullBleed: true },
   component: StudioPage,
 });
 
@@ -291,6 +293,11 @@ function StudioInner() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [runId, setRunId] = useState<string | null>(null);
+  // `node_results` da última run e o custo que ela registrou. Antes essa
+  // informação existia só dentro de runWorkflow e virava um toast que sumia —
+  // ou seja, você só sabia o que seria reaproveitado depois de executar.
+  const [lastRunResults, setLastRunResults] = useState<Record<string, NodeResultEntry>>({});
+  const [lastRunCost, setLastRunCost] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const search = Route.useSearch();
   const { fromGeneration } = search;
@@ -667,18 +674,22 @@ function StudioInner() {
       if (lastRunId) {
         const { data: run } = await supabase
           .from("studio_runs")
-          .select("id, node_results")
+          .select("id, node_results, cost_usd")
           .eq("id", lastRunId)
           .maybeSingle();
         if (run) {
           nodeResults = (run.node_results as Record<string, NodeResultEntry>) ?? {};
           setRunId(run.id);
+          setLastRunCost(run.cost_usd ?? null);
         } else {
           setRunId(null);
+          setLastRunCost(null);
         }
       } else {
         setRunId(null);
+        setLastRunCost(null);
       }
+      setLastRunResults(nodeResults);
 
       setNodes(
         (g.nodes ?? []).map((n) => {
@@ -721,6 +732,8 @@ function StudioInner() {
     setEdges([]);
     setSelectedNodeId(null);
     setRunId(null);
+    setLastRunResults({});
+    setLastRunCost(null);
   }, [setNodes, setEdges]);
 
   const duplicateWorkflow = useCallback(async () => {
@@ -813,6 +826,7 @@ function StudioInner() {
         }
         reusedResults = valid;
         effectiveRunId = prevRun.id;
+        setLastRunResults(valid);
       }
     }
 
@@ -1073,6 +1087,7 @@ function StudioInner() {
             current_node: string | null;
             final_output_url: string | null;
             error_message: string | null;
+            cost_usd: number | null;
           };
           setNodes((ns) =>
             ns.map((n) => {
@@ -1103,8 +1118,10 @@ function StudioInner() {
               for (const [nid, entry] of Object.entries(row.node_results ?? {})) {
                 patched[nid] = { ...(entry as NodeResultEntry), hash: hashes[nid] };
               }
+              setLastRunResults(patched);
               await supabase.from("studio_runs").update({ node_results: patched }).eq("id", runId);
             })();
+            setLastRunCost(row.cost_usd ?? null);
           } else if (row.status === "failed") {
             setRunning(false);
             toast.error(row.error_message ?? "Execução falhou");
@@ -1122,8 +1139,20 @@ function StudioInner() {
     [nodes, selectedNodeId],
   );
 
+  // Mesmo predicado que runWorkflow usa para decidir o que reaproveitar — se
+  // divergirem, o painel mente. Por isso a condição está escrita igual.
+  const reuse = useMemo(() => {
+    if (nodes.length === 0) return { reusable: 0, total: 0 };
+    const hashes = computeNodeHashes(nodes, edges);
+    const reusable = nodes.filter((n) => {
+      const entry = lastRunResults[n.id];
+      return !!entry?.url && !!entry.hash && entry.hash === hashes[n.id];
+    }).length;
+    return { reusable, total: nodes.length };
+  }, [nodes, edges, lastRunResults]);
+
   return (
-    <div className="-m-8 flex h-[calc(100vh-4rem)] flex-col bg-background">
+    <div className="flex min-h-0 flex-1 flex-col bg-background">
       {/* Toolbar */}
       <div className="flex shrink-0 items-center gap-3 border-b border-border bg-card px-4 py-2">
         <DropdownMenu>
@@ -1327,222 +1356,259 @@ function StudioInner() {
           </ReactFlow>
         </div>
 
-        {/* Inspector */}
-        {selectedNode && (
-          <div className="w-72 shrink-0 overflow-y-auto border-l border-border bg-card p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <p className="text-xs font-bold uppercase tracking-wide">
-                {OP_META[selectedNode.data.op].label}
-              </p>
-              <button
-                onClick={deleteSelected}
-                className="text-muted-foreground hover:text-destructive"
-                aria-label="Remover nó"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
-
-            {/* Inputs */}
-            {selectedNode.data.op === "image_upload" && (
-              <div className="space-y-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
-                  onClick={() => {
-                    fileTargetNode.current = selectedNode.id;
-                    fileRef.current?.click();
-                  }}
-                >
-                  <Upload className="h-3.5 w-3.5" /> Escolher arquivo
-                </Button>
-                {selectedNode.data.signedUrl && (
-                  <img src={selectedNode.data.signedUrl} alt="" className="w-full rounded-md" />
-                )}
-              </div>
-            )}
-
-            {selectedNode.data.op === "library_pick" && (
-              <div className="space-y-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
-                  onClick={() => openLibrary(selectedNode.id)}
-                >
-                  <LibraryIcon className="h-3.5 w-3.5" /> Escolher da biblioteca
-                </Button>
-                {selectedNode.data.signedUrl && (
-                  <img src={selectedNode.data.signedUrl} alt="" className="w-full rounded-md" />
-                )}
-              </div>
-            )}
-
-            {/* Modelo (operações) */}
-            {!OP_META[selectedNode.data.op].isInput && !OP_META[selectedNode.data.op].isOutput && (
-              <div className="mb-3">
-                <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                  Modelo
-                </label>
-                <Select
-                  value={selectedNode.data.model ?? DEFAULT_MODEL}
-                  onValueChange={(v) => updateNodeData(selectedNode.id, { model: v })}
-                >
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MODEL_OPTIONS.map((m) => (
-                      <SelectItem key={m.id} value={m.id}>
-                        <div className="flex flex-col">
-                          <span>{m.label}</span>
-                          <span className="text-[10px] text-muted-foreground">{m.hint}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {/* Prompt */}
-            {OP_META[selectedNode.data.op].needsPrompt && (
-              <div className="mb-3">
-                <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                  Instrução
-                </label>
-                {selectedNode.data.op === "compose" && (
-                  <div className="mb-2 rounded-md border border-border bg-muted/40 p-2 text-[10px] leading-relaxed text-muted-foreground">
-                    <span className="font-bold uppercase tracking-wide">Ordem importa:</span> a
-                    primeira aresta conectada vira <span className="font-bold">imagem 1</span>, a
-                    segunda vira <span className="font-bold">imagem 2</span>, e assim por diante.
-                    Use essa numeração no prompt.
-                  </div>
-                )}
-                <Textarea
-                  rows={5}
-                  className="text-xs"
-                  placeholder={
-                    selectedNode.data.op === "compose"
-                      ? "Ex.: Insira o sofá da imagem 1 nesta sala da imagem 2, mantendo iluminação e perspectiva."
-                      : "Descreva a edição"
-                  }
-                  value={selectedNode.data.prompt ?? ""}
-                  onChange={(e) => updateNodeData(selectedNode.id, { prompt: e.target.value })}
-                />
-              </div>
-            )}
-
-            {selectedNode.data.resultUrl && (
-              <div className="mt-4 space-y-2">
-                <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                  Resultado
-                </p>
-                <img src={selectedNode.data.resultUrl} alt="" className="w-full rounded-md" />
-                <a
-                  href={selectedNode.data.resultUrl}
-                  download
-                  className="inline-flex items-center gap-1 text-xs text-accent hover:underline"
-                >
-                  <Download className="h-3 w-3" /> Baixar
-                </a>
-
-                <div className="mt-3 border-t border-border pt-3">
-                  <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                    Usar este resultado
+        {/* Painel lateral — sempre presente, para que custo e reuso não
+            dependam de haver um nó selecionado. */}
+        <aside className="flex w-[318px] shrink-0 flex-col border-l border-border/60 bg-card">
+          <div className="min-h-0 flex-1 overflow-y-auto p-4">
+            {selectedNode ? (
+              <>
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="text-xs font-bold uppercase tracking-wide">
+                    {OP_META[selectedNode.data.op].label}
                   </p>
-                  <div className="grid grid-cols-1 gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="justify-start"
-                      onClick={() => publishNode(selectedNode.id)}
-                      disabled={publishingAction !== null || !runId}
-                    >
-                      {publishingAction === "save_only" ? (
-                        <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                      ) : (
-                        <LibraryIcon className="mr-2 h-3 w-3" />
-                      )}
-                      Salvar na biblioteca
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="justify-start"
-                      onClick={() => setVideoDialogOpen(true)}
-                      disabled={publishingAction !== null || !runId}
-                    >
-                      <Sparkles className="mr-2 h-3 w-3" />
-                      Gerar vídeo POV
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="justify-start"
-                      onClick={() => setFurnitureDialogOpen(true)}
-                      disabled={publishingAction !== null || !runId}
-                    >
-                      <Shuffle className="mr-2 h-3 w-3" />
-                      Extrair móveis 3D
-                    </Button>
-                  </div>
-                  {!runId && (
-                    <p className="mt-2 text-[10px] text-muted-foreground">
-                      Salve o fluxo e execute para habilitar.
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {selectedNode.data.errorMessage && (
-              <div className="mt-3 space-y-2">
-                <p className="rounded-md bg-destructive/10 px-2 py-2 text-xs text-destructive">
-                  {selectedNode.data.errorMessage}
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
-                  onClick={() => retryNode(selectedNode.id)}
-                  disabled={running}
-                >
-                  {running ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <>Tentar de novo este nó</>
-                  )}
-                </Button>
-              </div>
-            )}
-
-            {!selectedNode.data.errorMessage &&
-              selectedNode.data.resultUrl &&
-              runId &&
-              !OP_META[selectedNode.data.op].isInput && (
-                <div className="mt-3">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
-                    onClick={() => retryNode(selectedNode.id)}
-                    disabled={running}
+                  <button
+                    onClick={deleteSelected}
+                    className="text-muted-foreground hover:text-destructive"
+                    aria-label="Remover nó"
                   >
-                    {running ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <>Executar a partir deste nó</>
-                    )}
-                  </Button>
-                  <p className="mt-1 text-[10px] text-muted-foreground">
-                    Reprocessa este nó e os seguintes, mantendo os anteriores.
-                  </p>
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
-              )}
+
+                {/* Inputs */}
+                {selectedNode.data.op === "image_upload" && (
+                  <div className="space-y-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => {
+                        fileTargetNode.current = selectedNode.id;
+                        fileRef.current?.click();
+                      }}
+                    >
+                      <Upload className="h-3.5 w-3.5" /> Escolher arquivo
+                    </Button>
+                    {selectedNode.data.signedUrl && (
+                      <img src={selectedNode.data.signedUrl} alt="" className="w-full rounded-md" />
+                    )}
+                  </div>
+                )}
+
+                {selectedNode.data.op === "library_pick" && (
+                  <div className="space-y-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => openLibrary(selectedNode.id)}
+                    >
+                      <LibraryIcon className="h-3.5 w-3.5" /> Escolher da biblioteca
+                    </Button>
+                    {selectedNode.data.signedUrl && (
+                      <img src={selectedNode.data.signedUrl} alt="" className="w-full rounded-md" />
+                    )}
+                  </div>
+                )}
+
+                {/* Modelo (operações) */}
+                {!OP_META[selectedNode.data.op].isInput &&
+                  !OP_META[selectedNode.data.op].isOutput && (
+                    <div className="mb-3">
+                      <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                        Modelo
+                      </label>
+                      <Select
+                        value={selectedNode.data.model ?? DEFAULT_MODEL}
+                        onValueChange={(v) => updateNodeData(selectedNode.id, { model: v })}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {MODEL_OPTIONS.map((m) => (
+                            <SelectItem key={m.id} value={m.id}>
+                              <div className="flex flex-col">
+                                <span>{m.label}</span>
+                                <span className="text-[10px] text-muted-foreground">{m.hint}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                {/* Prompt */}
+                {OP_META[selectedNode.data.op].needsPrompt && (
+                  <div className="mb-3">
+                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                      Instrução
+                    </label>
+                    {selectedNode.data.op === "compose" && (
+                      <div className="mb-2 rounded-md border border-border bg-muted/40 p-2 text-[10px] leading-relaxed text-muted-foreground">
+                        <span className="font-bold uppercase tracking-wide">Ordem importa:</span> a
+                        primeira aresta conectada vira <span className="font-bold">imagem 1</span>,
+                        a segunda vira <span className="font-bold">imagem 2</span>, e assim por
+                        diante. Use essa numeração no prompt.
+                      </div>
+                    )}
+                    <Textarea
+                      rows={5}
+                      className="text-xs"
+                      placeholder={
+                        selectedNode.data.op === "compose"
+                          ? "Ex.: Insira o sofá da imagem 1 nesta sala da imagem 2, mantendo iluminação e perspectiva."
+                          : "Descreva a edição"
+                      }
+                      value={selectedNode.data.prompt ?? ""}
+                      onChange={(e) => updateNodeData(selectedNode.id, { prompt: e.target.value })}
+                    />
+                  </div>
+                )}
+
+                {selectedNode.data.resultUrl && (
+                  <div className="mt-4 space-y-2">
+                    <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                      Resultado
+                    </p>
+                    <img src={selectedNode.data.resultUrl} alt="" className="w-full rounded-md" />
+                    <a
+                      href={selectedNode.data.resultUrl}
+                      download
+                      className="inline-flex items-center gap-1 text-xs text-accent hover:underline"
+                    >
+                      <Download className="h-3 w-3" /> Baixar
+                    </a>
+
+                    <div className="mt-3 border-t border-border pt-3">
+                      <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                        Usar este resultado
+                      </p>
+                      <div className="grid grid-cols-1 gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="justify-start"
+                          onClick={() => publishNode(selectedNode.id)}
+                          disabled={publishingAction !== null || !runId}
+                        >
+                          {publishingAction === "save_only" ? (
+                            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                          ) : (
+                            <LibraryIcon className="mr-2 h-3 w-3" />
+                          )}
+                          Salvar na biblioteca
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="justify-start"
+                          onClick={() => setVideoDialogOpen(true)}
+                          disabled={publishingAction !== null || !runId}
+                        >
+                          <Sparkles className="mr-2 h-3 w-3" />
+                          Gerar vídeo POV
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="justify-start"
+                          onClick={() => setFurnitureDialogOpen(true)}
+                          disabled={publishingAction !== null || !runId}
+                        >
+                          <Shuffle className="mr-2 h-3 w-3" />
+                          Extrair móveis 3D
+                        </Button>
+                      </div>
+                      {!runId && (
+                        <p className="mt-2 text-[10px] text-muted-foreground">
+                          Salve o fluxo e execute para habilitar.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {selectedNode.data.errorMessage && (
+                  <div className="mt-3 space-y-2">
+                    <p className="rounded-md bg-destructive/10 px-2 py-2 text-xs text-destructive">
+                      {selectedNode.data.errorMessage}
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => retryNode(selectedNode.id)}
+                      disabled={running}
+                    >
+                      {running ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <>Tentar de novo este nó</>
+                      )}
+                    </Button>
+                  </div>
+                )}
+
+                {!selectedNode.data.errorMessage &&
+                  selectedNode.data.resultUrl &&
+                  runId &&
+                  !OP_META[selectedNode.data.op].isInput && (
+                    <div className="mt-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        onClick={() => retryNode(selectedNode.id)}
+                        disabled={running}
+                      >
+                        {running ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <>Executar a partir deste nó</>
+                        )}
+                      </Button>
+                      <p className="mt-1 text-[10px] text-muted-foreground">
+                        Reprocessa este nó e os seguintes, mantendo os anteriores.
+                      </p>
+                    </div>
+                  )}
+              </>
+            ) : (
+              <div className="px-1 py-6">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                  Nó selecionado
+                </p>
+                <p className="mt-2.5 text-[12px] font-light leading-relaxed text-muted-foreground">
+                  Clique em um nó do fluxo para editar modelo, instrução e ver o resultado.
+                </p>
+              </div>
+            )}
           </div>
-        )}
+
+          <div className="shrink-0 border-t border-border/60 p-5">
+            {reuse.reusable > 0 && (
+              <div className="mb-4 rounded-lg bg-emerald-600/10 p-3.5">
+                <p className="text-[11.5px] font-semibold text-emerald-800">
+                  {reuse.reusable} de {reuse.total}{" "}
+                  {reuse.reusable === 1 ? "nó reaproveitado" : "nós reaproveitados"}
+                </p>
+                <p className="mt-1.5 text-[11px] font-light leading-relaxed text-emerald-800/80">
+                  Só o que você mudou será reprocessado na próxima execução.
+                </p>
+              </div>
+            )}
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-[12px] font-light text-muted-foreground">
+                Custo da última execução
+              </span>
+              <span className="text-[13px] font-semibold text-foreground">
+                {lastRunCost === null ? "—" : `$ ${lastRunCost.toFixed(2).replace(".", ",")}`}
+              </span>
+            </div>
+          </div>
+        </aside>
       </div>
 
       <input

@@ -30,3 +30,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Canvas de design gerado a partir de design/mockups/ (~2,5 MB de editor)
+design/mockups/*.html
+!design/mockups/*.dc.html
