@@ -1,0 +1,28 @@
+{
+  "pages": [
+    { "id": "page-1", "name": "Direção A — Ateliê" },
+    { "id": "page-2", "name": "Não escolhidas" }
+  ],
+  "artboards": [
+    { "file": "LoginA.dc.html",    "x": 0,    "y": 0,    "w": 1440, "h": 900, "title": "Login",        "page": "page-1" },
+    { "file": "Main.dc.html",      "x": 1560, "y": 0,    "w": 1440, "h": 900, "title": "Dashboard",    "page": "page-1" },
+    { "file": "Gerar.dc.html",     "x": 3120, "y": 0,    "w": 1440, "h": 900, "title": "Gerar — Objetos 3D", "page": "page-1" },
+    { "file": "Redecorar.dc.html", "x": 0,    "y": 1060, "w": 1440, "h": 900, "title": "Redecorar — resultado", "page": "page-1" },
+    { "file": "Biblioteca.dc.html","x": 1560, "y": 1060, "w": 1440, "h": 900, "title": "Biblioteca",   "page": "page-1" },
+    { "file": "Projetos.dc.html",  "x": 3120, "y": 1060, "w": 1440, "h": 900, "title": "Projetos",     "page": "page-1" },
+    { "file": "Studio.dc.html",    "x": 1560, "y": 2120, "w": 1440, "h": 900, "title": "Studio",       "page": "page-1" },
+
+    { "file": "LoginB.dc.html", "x": 0,    "y": 0,    "w": 1440, "h": 900, "title": "B — Login",         "page": "page-2" },
+    { "file": "AppB.dc.html",   "x": 1560, "y": 0,    "w": 1440, "h": 900, "title": "B — Área interna",  "page": "page-2" },
+    { "file": "LoginC.dc.html", "x": 0,    "y": 1060, "w": 1440, "h": 900, "title": "C — Login",         "page": "page-2" },
+    { "file": "AppC.dc.html",   "x": 1560, "y": 1060, "w": 1440, "h": 900, "title": "C — Área interna",  "page": "page-2" }
+  ],
+  "annotations": [
+    { "id": "fluxo", "x": 0, "y": -170, "w": 1440, "page": "page-1", "text": "DIREÇÃO A — ATELIÊ\nSete telas no mesmo sistema: chrome claro, navegação com rótulos sempre visíveis, o trabalho como herói.\nA navegação é idêntica em todas — só o item ativo muda. Nada de estrutura que se reorganiza conforme a tela." },
+    { "id": "gerar-n", "x": 3120, "y": -170, "w": 1440, "page": "page-1", "text": "GERAR\nOs quatro modos aparecem lado a lado com tempo estimado, e a coluna da direita mostra custo antes de você apertar o botão. O aviso de que dá para fechar a aba responde a dúvida que todo mundo tem na primeira vez." },
+    { "id": "red-n", "x": 0, "y": 2010, "w": 1440, "page": "page-1", "text": "REDECORAR\nControles à esquerda, resultado ocupando a tela. A faixa de refino no rodapé é o caminho de volta: ajustar em texto em vez de recomeçar do zero." },
+    { "id": "studio-n", "x": 3120, "y": 2120, "w": 1200, "page": "page-1", "text": "STUDIO\nO painel direito mostra o que será cobrado nesta execução e quantos nós foram reaproveitados — a informação que faltava para confiar no botão Executar." },
+    { "id": "nao-esc", "x": 0, "y": -170, "w": 1440, "page": "page-2", "text": "Direções B (Painel) e C (Estúdio), guardadas para referência. A ideia da C — o resultado ocupando a tela, controles recuados — sobreviveu na tela de Redecorar da Direção A." }
+  ],
+  "launch": { "view": "canvas", "page": "page-1" }
+}

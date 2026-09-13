@@ -1,14 +1,4 @@
-import {
-  Bolt,
-  Sparkles,
-  Wand2,
-  Type,
-  ArrowRight,
-  ImageUp,
-  X,
-  Loader2,
-  RefreshCw,
-} from "lucide-react";
+import { Sparkles, ArrowRight, ImageUp, X, Loader2, RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -35,9 +25,20 @@ type Pipeline = {
   id: PipelineId;
   title: string;
   desc: string;
-  icon: typeof Bolt;
   recommended?: boolean;
   estSeconds: number;
+};
+
+type EngineId = "hunyuan_2_1" | "hunyuan_3_1";
+
+/**
+ * Custo por geração, em dólar. Só existe número publicado para o motor de
+ * imagem — é o mesmo que a tela do motor já mostrava. `null` significa "não
+ * temos estimativa", e a tela diz isso em vez de inventar um número.
+ */
+const ENGINE_COST_USD: Record<EngineId, number | null> = {
+  hunyuan_2_1: 0.05,
+  hunyuan_3_1: null,
 };
 
 const PIPELINES: Pipeline[] = [
@@ -45,14 +46,12 @@ const PIPELINES: Pipeline[] = [
     id: "direct",
     title: "Direto",
     desc: "Foto pronta vira 3D na hora. Use quando o objeto já está com fundo limpo.",
-    icon: Bolt,
     estSeconds: 45,
   },
   {
     id: "enriched",
     title: "Enriquecido",
     desc: "IA limpa fundo e gera vistas multi-view antes do 3D. Resultado superior.",
-    icon: Sparkles,
     recommended: true,
     estSeconds: 90,
   },
@@ -60,14 +59,12 @@ const PIPELINES: Pipeline[] = [
     id: "edit",
     title: "Edita antes",
     desc: "Modifica cor, material ou tamanho antes de virar 3D.",
-    icon: Wand2,
     estSeconds: 120,
   },
   {
     id: "text_to_3d",
     title: "Texto para 3D",
     desc: "Descreva o objeto e a IA cria o modelo 3D do zero. Sem precisar de imagem.",
-    icon: Type,
     estSeconds: 150,
   },
 ];
@@ -94,7 +91,7 @@ function GerarPage() {
   const { from } = Route.useSearch();
 
   const [pipelineId, setPipelineId] = useState<PipelineId>("enriched");
-  const [engine, setEngine] = useState<"hunyuan_2_1" | "hunyuan_3_1">("hunyuan_2_1");
+  const [engine, setEngine] = useState<EngineId>("hunyuan_2_1");
   const [primary, setPrimary] = useState<File | null>(null);
   const [instruction, setInstruction] = useState("");
   const [editPrompt, setEditPrompt] = useState("");
@@ -113,7 +110,7 @@ function GerarPage() {
 
   const pipeline = PIPELINES.find((p) => p.id === pipelineId)!;
   const isTextPipeline = pipelineId === "text_to_3d";
-  const effectiveEngine: "hunyuan_2_1" | "hunyuan_3_1" = isTextPipeline ? "hunyuan_3_1" : engine;
+  const effectiveEngine: EngineId = isTextPipeline ? "hunyuan_3_1" : engine;
 
   const hasReusedSource = (reusedFrom?.sourceImages.length ?? 0) > 0;
   const primarySatisfied = !!primary || hasReusedSource;
@@ -373,9 +370,10 @@ function GerarPage() {
 
       <PipelineGrid value={pipelineId} onChange={setPipelineId} />
 
-      <div className="mt-12">
-        <Label>Detalhes da geração</Label>
-        <div className="mt-4">
+      {/* Entrada à esquerda, o que vai acontecer à direita. Antes o botão
+          ficava no fim de uma coluna só, depois de rolar tudo. */}
+      <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] lg:items-start">
+        <div>
           {(pipelineId === "direct" || pipelineId === "enriched") && (
             <BasicForm
               file={primary}
@@ -395,44 +393,50 @@ function GerarPage() {
           {isTextPipeline && <TextTo3DForm prompt={textPrompt} onPrompt={setTextPrompt} />}
         </div>
 
-        {!isTextPipeline && (
-          <div className="mt-10">
-            <Label>Motor de geração 3D</Label>
-            <div className="mt-4 grid gap-4 sm:grid-cols-1">
-              <EngineCard
-                selected={engine === "hunyuan_2_1"}
-                onClick={() => setEngine("hunyuan_2_1")}
-                title="Hunyuan 2.1"
-                tag="Padrão"
-                desc="Multi-view com controle por ângulo. Recomendado para todas as pipelines com imagem."
-                meta="~45-90s · ~$0.05"
-              />
+        <div className="space-y-4 lg:sticky lg:top-6">
+          {!isTextPipeline && (
+            <div>
+              <Label>Motor</Label>
+              <div className="mt-3">
+                <EngineCard
+                  selected={engine === "hunyuan_2_1"}
+                  onClick={() => setEngine("hunyuan_2_1")}
+                  title="Hunyuan 2.1"
+                  tag="Padrão"
+                  desc="Multi-view com controle por ângulo. Recomendado para todas as pipelines com imagem."
+                />
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        <div className="mt-8 flex flex-col gap-4 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm font-light text-muted-foreground">
-            Tempo estimado:{" "}
-            <span className="font-bold text-foreground">~{pipeline.estSeconds}s</span>
-          </p>
-          <div className="flex items-center gap-3">
+          <div
+            className="rounded-[20px] bg-card p-6"
+            style={{ boxShadow: "var(--via-shadow-card)" }}
+          >
+            <SummaryRow label="Tempo estimado" value={`~${pipeline.estSeconds} s`} />
+            <div className="my-3.5 h-px bg-border/60" />
+            <SummaryRow
+              label="Custo estimado"
+              value={formatCost(ENGINE_COST_USD[effectiveEngine])}
+            />
+
             {isTextPipeline && (
               <button
                 type="button"
                 onClick={() => setRefineOpen(true)}
                 disabled={textPrompt.trim().length < 3 || submitting}
-                className="inline-flex h-12 items-center gap-2 rounded-full border border-border px-5 text-[11px] font-black uppercase tracking-[0.12em] text-foreground transition-colors hover:border-primary/40 hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
+                className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full border border-border/60 text-[11px] font-black uppercase tracking-[0.12em] text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Sparkles className="h-4 w-4" strokeWidth={1.75} />
                 Refinar com IA
               </button>
             )}
+
             <button
               type="button"
               onClick={() => void handleGenerate()}
               disabled={!canGenerate || submitting}
-              className="inline-flex h-12 items-center gap-2 rounded-full bg-primary px-7 text-[12px] font-black uppercase tracking-[0.12em] text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
+              className="mt-3 inline-flex h-[52px] w-full items-center justify-center gap-2 rounded-full bg-primary text-[12px] font-black uppercase tracking-[0.12em] text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {submitting ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -443,6 +447,9 @@ function GerarPage() {
                 </>
               )}
             </button>
+            <p className="mt-3 text-center text-[11px] font-light leading-relaxed text-muted-foreground">
+              Você pode fechar esta aba — avisamos quando ficar pronto.
+            </p>
           </div>
         </div>
       </div>
@@ -477,82 +484,12 @@ function GerarPage() {
 function Header() {
   return (
     <div>
-      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-        Gerar
-      </p>
-      <h1 className="mt-2 text-4xl font-black tracking-tight text-foreground">
-        Geração de objetos em 3D
+      <h1 className="text-[30px] font-black leading-[1.1] tracking-tight text-foreground">
+        Gerar objeto 3D
       </h1>
-      <p className="mt-3 max-w-xl font-light text-muted-foreground">
-        Gere objetos em 3D a partir de imagem ou texto. Escolha um pipeline e a gente cuida do
-        resto.
+      <p className="mt-2 max-w-xl font-light text-muted-foreground">
+        Suba uma referência ou descreva o objeto. O resto é com a gente.
       </p>
-
-      <div className="mt-6 grid gap-3 sm:grid-cols-3">
-        <a
-          href="/app/gerar/redecorar"
-          className="flex items-center justify-between gap-4 rounded-2xl border border-accent/30 bg-accent/5 px-5 py-4 transition-colors hover:border-accent/60 hover:bg-accent/10"
-        >
-          <div className="flex items-center gap-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
-              <Wand2 className="h-4 w-4" strokeWidth={1.75} />
-            </div>
-            <div>
-              <p className="text-sm font-bold text-foreground">Redecorar ambiente</p>
-              <p className="mt-0.5 text-[12px] font-light text-muted-foreground">
-                Foto real → 4 propostas fotorrealistas em 20s.
-              </p>
-            </div>
-          </div>
-          <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-        </a>
-
-        <a
-          href="/app/gerar/briefing"
-          className="flex items-center justify-between gap-4 rounded-2xl border border-accent/30 bg-accent/5 px-5 py-4 transition-colors hover:border-accent/60 hover:bg-accent/10"
-        >
-          <div className="flex items-center gap-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
-              <Type className="h-4 w-4" strokeWidth={1.75} />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-bold text-foreground">Briefing → planta 2D</p>
-                <span className="rounded-[4px] bg-accent/10 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-[0.12em] text-accent">
-                  Novo
-                </span>
-              </div>
-              <p className="mt-0.5 text-[12px] font-light text-muted-foreground">
-                Texto do briefing → 4 plantas baixas 2D + análise IA.
-              </p>
-            </div>
-          </div>
-          <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-        </a>
-
-        <a
-          href="/app/gerar/analise"
-          className="flex items-center justify-between gap-4 rounded-2xl border border-accent/30 bg-accent/5 px-5 py-4 transition-colors hover:border-accent/60 hover:bg-accent/10"
-        >
-          <div className="flex items-center gap-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
-              <ImageUp className="h-4 w-4" strokeWidth={1.75} />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-bold text-foreground">Analisar planta existente</p>
-                <span className="rounded-[4px] bg-accent/10 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-[0.12em] text-accent">
-                  Novo
-                </span>
-              </div>
-              <p className="mt-0.5 text-[12px] font-light text-muted-foreground">
-                Imagem ou PDF → cômodos, áreas e NBR 9050 em ~20s.
-              </p>
-            </div>
-          </div>
-          <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-        </a>
-      </div>
     </div>
   );
 }
@@ -567,9 +504,9 @@ function PipelineGrid({
   onChange: (v: PipelineId) => void;
 }) {
   return (
-    <div className="mt-12">
-      <Label>Escolha um pipeline</Label>
-      <div className="mt-4 grid gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
+    <div className="mt-8">
+      <Label>Como gerar</Label>
+      <div className="mt-3 grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
         {PIPELINES.map((p) => (
           <PipelineCard
             key={p.id}
@@ -592,42 +529,51 @@ function PipelineCard({
   selected: boolean;
   onClick: () => void;
 }) {
-  const Icon = pipeline.icon;
   return (
     <button
       type="button"
       onClick={onClick}
       className={
-        "relative flex h-full flex-col rounded-2xl border p-5 text-left transition-all " +
+        "relative flex h-full flex-col rounded-xl border-[1.5px] bg-card p-5 text-left transition-colors " +
         (selected
-          ? "border-accent bg-card shadow-lg"
-          : "border-border/60 bg-background hover:border-accent/40 hover:bg-card")
+          ? "border-accent-foreground ring-[3px] ring-accent-foreground/15"
+          : "border-border/60 hover:border-accent-foreground/40")
       }
     >
       {pipeline.recommended && (
-        <span className="absolute right-3 top-3 rounded-[4px] bg-emerald-600/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700">
+        <span className="absolute right-3.5 top-3.5 rounded-[4px] bg-emerald-600/10 px-[7px] py-[3px] text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700">
           Recomendado
         </span>
       )}
-      <div
-        className={
-          "flex h-[42px] w-[42px] items-center justify-center rounded-md " +
-          (selected ? "bg-accent text-accent-foreground" : "bg-primary/[0.06] text-primary")
-        }
-      >
-        <Icon className="h-[22px] w-[22px]" strokeWidth={1.75} />
-      </div>
-      <h3 className="mt-4 text-base font-black tracking-tight text-foreground">{pipeline.title}</h3>
-      <p className="mt-1.5 text-xs font-light leading-relaxed text-muted-foreground">
+      <p className="text-[15px] font-black tracking-tight text-foreground">{pipeline.title}</p>
+      <p className="mt-2 text-xs font-light leading-relaxed text-muted-foreground">
         {pipeline.desc}
       </p>
-      <div className="mt-auto pt-4">
-        <span className="inline-flex items-center gap-1.5 rounded-[4px] bg-accent/10 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-accent">
-          ~{pipeline.estSeconds}s
-        </span>
-      </div>
+      <span
+        className={
+          "mt-auto pt-3.5 text-[10px] font-black uppercase tracking-[0.12em] " +
+          (selected ? "text-accent-foreground" : "text-muted-foreground")
+        }
+      >
+        ~{pipeline.estSeconds}s
+      </span>
     </button>
   );
+}
+
+function SummaryRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <span className="text-[12px] font-light text-muted-foreground">{label}</span>
+      <span className="text-[13px] font-semibold text-foreground">{value}</span>
+    </div>
+  );
+}
+
+/** Sem número publicado o traço é honesto; um "$ 0,00" não seria. */
+function formatCost(usd: number | null): string {
+  if (usd === null) return "—";
+  return `$ ${usd.toFixed(2).replace(".", ",")}`;
 }
 
 /* ============== FORMS ============== */
@@ -638,36 +584,30 @@ function EngineCard({
   title,
   tag,
   desc,
-  meta,
 }: {
   selected: boolean;
   onClick: () => void;
   title: string;
   tag: string;
   desc: string;
-  meta: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      style={{ boxShadow: "var(--via-shadow-card)" }}
       className={
-        "relative flex h-full flex-col rounded-2xl border p-5 text-left transition-all " +
-        (selected
-          ? "border-accent bg-card shadow-lg"
-          : "border-border/60 bg-background hover:border-accent/40 hover:bg-card")
+        "relative flex w-full flex-col rounded-[20px] bg-card p-5 text-left transition-shadow " +
+        (selected ? "ring-2 ring-accent-foreground/30" : "hover:shadow-md")
       }
     >
-      <div className="flex items-center justify-between">
-        <span className="text-base font-black tracking-tight text-foreground">{title}</span>
-        <span className="rounded-[4px] bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-[14px] font-black tracking-tight text-foreground">{title}</span>
+        <span className="rounded-[4px] bg-muted px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-muted-foreground">
           {tag}
         </span>
       </div>
-      <p className="mt-2 text-sm font-light text-muted-foreground">{desc}</p>
-      <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.12em] text-foreground/70">
-        {meta}
-      </p>
+      <p className="mt-2.5 text-xs font-light leading-relaxed text-muted-foreground">{desc}</p>
     </button>
   );
 }
@@ -681,7 +621,7 @@ function Label({ children }: { children: React.ReactNode }) {
 }
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <label className="block text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+    <label className="block text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
       {children}
     </label>
   );
@@ -751,10 +691,13 @@ function Dropzone({
   if (file) {
     const isPdf = file.type === "application/pdf";
     return (
-      <div className="flex items-center gap-4 rounded-2xl border border-border bg-card p-4">
-        <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
+      <div
+        className="flex items-center gap-[18px] rounded-[20px] bg-card p-[18px]"
+        style={{ boxShadow: "var(--via-shadow-card)" }}
+      >
+        <div className="flex h-[104px] w-[104px] shrink-0 items-center justify-center overflow-hidden rounded-xl bg-muted">
           {isPdf ? (
-            <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+            <span className="text-[10px] font-black uppercase tracking-[0.12em] text-muted-foreground">
               PDF
             </span>
           ) : (
@@ -764,19 +707,24 @@ function Dropzone({
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-foreground">{file.name}</p>
-          <p className="text-xs font-light text-muted-foreground">
+          <p className="truncate text-[13px] font-semibold text-foreground">{file.name}</p>
+          <p className="mt-1 text-[11.5px] font-light text-muted-foreground">
             {(file.size / 1024 / 1024).toFixed(2)} MB
           </p>
+          <div className="mt-3.5 flex items-center gap-2">
+            <label className="inline-flex h-8 cursor-pointer items-center rounded-full border border-border/60 px-3.5 text-[11px] font-semibold text-foreground transition-colors hover:bg-muted">
+              Trocar
+              <input type="file" accept={accept} onChange={handle} className="hidden" />
+            </label>
+            <button
+              type="button"
+              onClick={() => onFile(null)}
+              className="inline-flex h-8 items-center rounded-full px-3.5 text-[11px] font-light text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Remover
+            </button>
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={() => onFile(null)}
-          className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-          aria-label="Remover"
-        >
-          <X className="h-4 w-4" />
-        </button>
       </div>
     );
   }
@@ -793,8 +741,10 @@ function Dropzone({
         const f = e.dataTransfer.files?.[0];
         if (f) acceptFile(f);
       }}
-      className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border border-dashed px-6 py-12 text-center transition-colors ${
-        dragging ? "border-accent bg-accent/5" : "border-border bg-card hover:bg-muted/40"
+      className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-[20px] border border-dashed px-6 py-12 text-center transition-colors ${
+        dragging
+          ? "border-accent-foreground bg-accent/40"
+          : "border-border/60 bg-card hover:bg-muted/40"
       }`}
     >
       <ImageUp className="h-10 w-10 text-muted-foreground" strokeWidth={1.5} />
@@ -830,7 +780,7 @@ function BasicForm({
           value={instruction}
           onChange={(e) => onInstruction(e.target.value)}
           placeholder="Ex: luminária pendente dourada estilo art déco"
-          className="mt-2 block w-full resize-none rounded-md border border-border bg-background px-4 py-3 text-sm text-foreground focus:border-primary focus:outline-none"
+          className="mt-2 block w-full resize-none rounded-xl border border-border/60 bg-card px-4 py-3.5 text-sm font-light text-foreground focus:border-accent-foreground/40 focus:outline-none"
         />
       </div>
     </div>
@@ -860,10 +810,10 @@ function TextTo3DForm({ prompt, onPrompt }: { prompt: string; onPrompt: (v: stri
           onChange={(e) => onPrompt(e.target.value.slice(0, MAX))}
           placeholder="Ex: Poltrona elegante esculpida no formato de um abacate, casca verde aveludada, almofada interna dourada polida, detalhes ornamentais em latão, render fotorrealista, iluminação dramática de estúdio, fundo neutro"
           aria-invalid={tooShort || tooLong}
-          className={`mt-2 block w-full resize-y rounded-md border bg-background px-4 py-3 text-sm text-foreground focus:outline-none ${
+          className={`mt-2 block w-full resize-y rounded-xl border bg-card px-4 py-3.5 text-sm font-light text-foreground focus:outline-none ${
             tooShort || tooLong
               ? "border-destructive focus:border-destructive"
-              : "border-border focus:border-primary"
+              : "border-border/60 focus:border-accent-foreground/40"
           }`}
         />
         <div className="mt-2 flex items-start justify-between gap-4">
@@ -927,7 +877,7 @@ function EditForm({
           value={prompt}
           onChange={(e) => onPrompt(e.target.value)}
           placeholder="Descreva as alterações desejadas"
-          className="mt-2 block w-full resize-none rounded-md border border-border bg-background px-4 py-3 text-sm text-foreground focus:border-primary focus:outline-none"
+          className="mt-2 block w-full resize-none rounded-xl border border-border/60 bg-card px-4 py-3.5 text-sm font-light text-foreground focus:border-accent-foreground/40 focus:outline-none"
         />
         <div className="mt-3 flex flex-wrap gap-2">
           {EDIT_SUGGESTIONS.map((s) => (

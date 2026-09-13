@@ -1,0 +1,163 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mulish:wght@300;400;600;900&display=swap">
+  <style>
+    body { margin:0; font-family:'Avenir LT Std','Avenir Next',Avenir,'Mulish','Helvetica Neue',sans-serif; -webkit-font-smoothing:antialiased; }
+    a { color:#0A4F95; text-decoration:none; } a:hover { color:#02162A; }
+    .lbl { font-size:10px; font-weight:900; letter-spacing:.18em; text-transform:uppercase; color:#6B7A8D; }
+    .nav { display:flex; align-items:center; gap:11px; padding:9px 12px; border-radius:8px; font-size:14px; color:#02162A; }
+    .nav-on { background:#E8F0FB; color:#0A4F95; font-weight:600; }
+    .sub { padding:7px 12px 7px 40px; border-radius:8px; font-size:13px; color:#6B7A8D; }
+    .sub-on { background:#E8F0FB; color:#0A4F95; font-weight:600; }
+    .card { border-radius:20px; background:#FFFFFF; box-shadow:0 1px 3px rgba(2,22,42,.08), 0 4px 16px rgba(2,22,42,.06); }
+    .chip { height:32px; padding:0 14px; border-radius:999px; display:flex; align-items:center; font-size:12px; }
+  </style>
+</helmet>
+
+<div style="width:1440px; height:900px; display:flex; background:#F9F9F9; color:#02162A; overflow:hidden;">
+  <aside style="width:244px; flex-shrink:0; background:#FFFFFF; border-right:1px solid rgba(2,22,42,.08); display:flex; flex-direction:column;">
+    <div style="height:76px; display:flex; align-items:center; gap:10px; padding:0 24px; border-bottom:1px solid rgba(2,22,42,.08);">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#02162A" stroke-width="1.6" stroke-linejoin="round"><path d="M12 2.5 21 7.5v9L12 21.5 3 16.5v-9z"/><path d="M12 12 21 7.5M12 12v9.5M12 12 3 7.5" stroke-width="1.2"/></svg><span style="font-size:15px; font-weight:900; letter-spacing:-.01em;">Arq3D</span>
+    </div>
+    <nav style="flex:1; display:flex; flex-direction:column; gap:2px; padding:20px 14px; overflow:hidden;">
+      <div class="nav"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6B7A8D" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/></svg>Dashboard</div>
+      <div style="margin-top:14px; padding:0 12px 8px;" class="lbl">Gerar</div>
+      <div style="display:flex; flex-direction:column; gap:2px;">
+        <div class="nav"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6B7A8D" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 20 8v8l-8 4.5L4 16V8z"/></svg>Objetos 3D</div>
+        <div class="nav"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6B7A8D" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20 15 9l-1.5-1.5L2.5 18.5z"/><path d="M17 3.5v4M15 5.5h4M19.5 12v3M18 13.5h3"/></svg>Redecorar</div>
+        <div class="nav"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6B7A8D" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 6.5h17v11h-17z"/><path d="M10 6.5v11M3.5 12H10" stroke-width="1.2"/></svg>Plantas</div>
+        <div class="nav"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6B7A8D" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 6.5h11v11h-11z"/><path d="m14.5 11 6-3v8l-6-3z"/></svg>Vídeo POV</div>
+      </div>
+      <div style="margin-top:18px; display:flex; flex-direction:column; gap:2px;">
+        <div class="nav"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6B7A8D" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="12" r="2.5"/><circle cx="6" cy="18" r="2.5"/><path d="M8.5 7.2 15.5 11M8.5 16.8 15.5 13"/></svg>Studio</div>
+        <div class="nav"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6B7A8D" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5h5v15H4zM11 4.5h4v15h-4z"/><path d="m17 5.5 3 14"/></svg>Biblioteca</div>
+        <div class="nav nav-on"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 6.5h6l2 2.5h9v10h-17z"/></svg>Projetos</div>
+      </div>
+    </nav>
+    <div style="padding:14px; border-top:1px solid rgba(2,22,42,.08); display:flex; align-items:center; gap:11px;">
+      <div style="width:32px; height:32px; border-radius:999px; background:#02162A; color:#fff; font-size:11px; font-weight:900; display:flex; align-items:center; justify-content:center;">PA</div>
+      <div style="display:flex; flex-direction:column; line-height:1.25;">
+        <span style="font-size:13px; font-weight:600;">Pedro Ayres</span>
+        <span style="font-size:11px; color:#6B7A8D;">CAU A123456-7</span>
+      </div>
+    </div>
+  </aside>
+  <main style="flex:1; display:flex; flex-direction:column; min-width:0;">
+    <header style="height:76px; flex-shrink:0; display:flex; align-items:center; justify-content:space-between; gap:24px; padding:0 40px; border-bottom:1px solid rgba(2,22,42,.08);">
+      <div style="display:flex; align-items:center; gap:9px; font-size:13px; color:#6B7A8D;"><span>Arq3D</span><span style="color:rgba(2,22,42,.25);">/</span><span style="color:#02162A; font-weight:600;">Projetos</span></div>
+      <div style="display:flex; align-items:center; gap:12px;"><div style="display:flex; align-items:center; gap:8px; height:44px; padding:0 22px; border-radius:999px; background:#02162A; color:#fff;"><span style="font-size:11px; font-weight:900; letter-spacing:.12em; text-transform:uppercase;">Novo projeto</span></div></div>
+    </header>
+    <div style="flex:1; overflow:hidden; padding:32px 40px 0; display:grid; grid-template-columns:minmax(0,1fr) 330px; gap:32px;">
+      <div style="min-width:0;">
+        <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px;">
+          <div>
+            <h1 style="margin:0; font-size:30px; font-weight:900; letter-spacing:-.02em;">Projetos</h1>
+            <p style="margin:7px 0 0; font-size:14px; font-weight:300; color:#6B7A8D;">Agrupe gerações por cliente e compartilhe sem exigir login.</p>
+          </div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:10px; margin-top:26px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:20px; padding:18px 22px; border-radius:12px; background:#E8F0FB; border:1px solid rgba(10,79,149,.22);">
+      <div style="display:flex; align-items:center; gap:16px; min-width:0;">
+        <div style="display:flex; gap:4px;">
+          <div style="width:34px; height:34px; border-radius:6px; background:linear-gradient(155deg,#DCE6F4,#AFC4E0);"></div>
+          <div style="width:34px; height:34px; border-radius:6px; background:linear-gradient(155deg,#EFEAE1,#CFC4B3);"></div>
+        </div>
+        <div style="min-width:0;">
+          <p style="margin:0; font-size:14px; font-weight:600;">Residência Itaim</p>
+          <p style="margin:4px 0 0; font-size:11.5px; color:#6B7A8D;">Marina Costa · 12 peças</p>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:18px;">
+        <span style="font-size:11.5px; color:#6B7A8D;">há 2 h</span>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6B7A8D" stroke-width="1.8" stroke-linecap="round"><path d="m9 5 7 7-7 7"/></svg>
+      </div>
+    </div>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:20px; padding:18px 22px; border-radius:12px; background:#FFFFFF; border:1px solid rgba(2,22,42,.08);">
+      <div style="display:flex; align-items:center; gap:16px; min-width:0;">
+        <div style="display:flex; gap:4px;">
+          <div style="width:34px; height:34px; border-radius:6px; background:linear-gradient(155deg,#DCE6F4,#AFC4E0);"></div>
+          <div style="width:34px; height:34px; border-radius:6px; background:linear-gradient(155deg,#EFEAE1,#CFC4B3);"></div>
+        </div>
+        <div style="min-width:0;">
+          <p style="margin:0; font-size:14px; font-weight:600;">Clínica Vila Nova</p>
+          <p style="margin:4px 0 0; font-size:11.5px; color:#6B7A8D;">Dr. Aurélio · 5 peças</p>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:18px;">
+        <span style="font-size:11.5px; color:#6B7A8D;">ontem</span>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6B7A8D" stroke-width="1.8" stroke-linecap="round"><path d="m9 5 7 7-7 7"/></svg>
+      </div>
+    </div>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:20px; padding:18px 22px; border-radius:12px; background:#FFFFFF; border:1px solid rgba(2,22,42,.08);">
+      <div style="display:flex; align-items:center; gap:16px; min-width:0;">
+        <div style="display:flex; gap:4px;">
+          <div style="width:34px; height:34px; border-radius:6px; background:linear-gradient(155deg,#DCE6F4,#AFC4E0);"></div>
+          <div style="width:34px; height:34px; border-radius:6px; background:linear-gradient(155deg,#EFEAE1,#CFC4B3);"></div>
+        </div>
+        <div style="min-width:0;">
+          <p style="margin:0; font-size:14px; font-weight:600;">Loja Oscar Freire</p>
+          <p style="margin:4px 0 0; font-size:11.5px; color:#6B7A8D;">Grupo Verten · 9 peças</p>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:18px;">
+        <span style="font-size:11.5px; color:#6B7A8D;">3 dias</span>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6B7A8D" stroke-width="1.8" stroke-linecap="round"><path d="m9 5 7 7-7 7"/></svg>
+      </div>
+    </div>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:20px; padding:18px 22px; border-radius:12px; background:#FFFFFF; border:1px solid rgba(2,22,42,.08);">
+      <div style="display:flex; align-items:center; gap:16px; min-width:0;">
+        <div style="display:flex; gap:4px;">
+          <div style="width:34px; height:34px; border-radius:6px; background:linear-gradient(155deg,#DCE6F4,#AFC4E0);"></div>
+          <div style="width:34px; height:34px; border-radius:6px; background:linear-gradient(155deg,#EFEAE1,#CFC4B3);"></div>
+        </div>
+        <div style="min-width:0;">
+          <p style="margin:0; font-size:14px; font-weight:600;">Casa de praia — Juquehy</p>
+          <p style="margin:4px 0 0; font-size:11.5px; color:#6B7A8D;">Família Bastos · 21 peças</p>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:18px;">
+        <span style="font-size:11.5px; color:#6B7A8D;">1 semana</span>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6B7A8D" stroke-width="1.8" stroke-linecap="round"><path d="m9 5 7 7-7 7"/></svg>
+      </div>
+    </div>
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:18px 22px; border-radius:12px; border:1px dashed rgba(2,22,42,.15);">
+            <div><p style="margin:0; font-size:14px; font-weight:600; color:#0A4F95;">Novo projeto</p>
+            <p style="margin:4px 0 0; font-size:11.5px; color:#6B7A8D;">Nome, cliente e prazo</p></div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0A4F95" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <aside style="min-width:0; padding-top:8px;">
+        <span class="lbl">Residência Itaim</span>
+        <div class="card" style="margin-top:12px; padding:20px;">
+          <div style="display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:6px;">
+            <div style="aspect-ratio:1; border-radius:6px; background:linear-gradient(155deg,#DCE6F4,#AFC4E0);"></div><div style="aspect-ratio:1; border-radius:6px; background:linear-gradient(155deg,#E6E9ED,#BFC6CF);"></div><div style="aspect-ratio:1; border-radius:6px; background:linear-gradient(155deg,#EFEAE1,#CFC4B3);"></div><div style="aspect-ratio:1; border-radius:6px; background:linear-gradient(155deg,#DDE7E2,#B3C6BE);"></div><div style="aspect-ratio:1; border-radius:6px; background:linear-gradient(155deg,#E9E2E6,#C6B6BE);"></div><div style="aspect-ratio:1; border-radius:6px; background:linear-gradient(155deg,#E2E6F0,#B6BFD4);"></div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:12px; margin-top:18px;">
+            <div style="display:flex; justify-content:space-between;"><span style="font-size:12px; color:#6B7A8D;">Cliente</span><span style="font-size:12px; font-weight:600;">Marina Costa</span></div>
+            <div style="display:flex; justify-content:space-between;"><span style="font-size:12px; color:#6B7A8D;">Prazo</span><span style="font-size:12px; font-weight:600;">30 out 2026</span></div>
+            <div style="display:flex; justify-content:space-between;"><span style="font-size:12px; color:#6B7A8D;">Peças</span><span style="font-size:12px; font-weight:600;">12</span></div>
+          </div>
+          <div style="height:1px; background:rgba(2,22,42,.08); margin:18px 0;"></div>
+          <div style="display:flex; align-items:center; gap:9px; height:40px; padding:0 14px; border-radius:8px; background:#F0F2F5;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6B7A8D" stroke-width="1.7" stroke-linecap="round"><path d="M9.5 14.5 14.5 9.5"/><path d="M11 7.5 13 5.5a3.5 3.5 0 0 1 5 5l-2 2M13 16.5l-2 2a3.5 3.5 0 0 1-5-5l2-2"/></svg>
+            <span style="font-size:11.5px; color:#6B7A8D; flex:1;">arq3d.studio/p/8f2a…</span>
+            <span style="font-size:11px; font-weight:600; color:#0A4F95;">Copiar</span>
+          </div>
+          <p style="margin:10px 0 0; font-size:11px; font-weight:300; color:#6B7A8D; line-height:1.5;">Quem abrir vê as peças aprovadas, sem precisar de conta.</p>
+        </div>
+      </aside>
+    </div>
+  </main>
+</div>
+</x-dc>
+</body>
+</html>

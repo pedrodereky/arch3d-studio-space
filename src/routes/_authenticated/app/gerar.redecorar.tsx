@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowRight, Loader2, Sparkles, Info } from "lucide-react";
+import { ArrowRight, Loader2, Sparkles, Info, RefreshCw, ImagePlus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { pollGenerationStatus } from "@/lib/poll-generation";
@@ -17,6 +17,8 @@ export const Route = createFileRoute("/_authenticated/app/gerar/redecorar")({
   validateSearch: (s: Record<string, unknown>): Search => ({
     projectId: typeof s.projectId === "string" ? s.projectId : undefined,
   }),
+  // O trilho de controles encosta na barra lateral, sem respiro entre os dois.
+  staticData: { fullBleed: true },
   component: RedecorarPage,
 });
 
@@ -89,6 +91,10 @@ function RedecorarPage() {
     if (!user || !file || !canGenerate) return;
     setSubmitting(true);
     setPhase("loading");
+    // Uma segunda rodada não pode mostrar as propostas da rodada anterior
+    // enquanto a nova roda — agora que os controles ficam na tela, gerar de
+    // novo é um clique, e a lista antiga parecia resultado da rodada atual.
+    setVariations([]);
     try {
       // 1. sobe a foto no bucket inputs com path temporário
       const tempId = crypto.randomUUID();
@@ -172,13 +178,6 @@ function RedecorarPage() {
     }
   };
 
-  const handleChangeStyle = () => {
-    setPhase("input");
-    setVariations([]);
-    setGenerationId(null);
-    if (mode === "preset") setPresetId(null);
-  };
-
   const handleAddToProject = async (_v: RedecorateVariation) => {
     if (!generationId) return;
     if (!projectId) {
@@ -210,175 +209,235 @@ function RedecorarPage() {
     });
   };
 
+  const busy = submitting || phase === "loading";
+
   return (
-    <div className="mx-auto max-w-6xl">
-      <header>
-        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-          Gerar
-        </p>
-        <h1 className="mt-2 text-4xl font-black tracking-tight text-foreground">
-          Redecorar ambiente
-        </h1>
-        <p className="mt-3 max-w-xl font-light text-muted-foreground">
-          Foto real do ambiente → 4 propostas fotorrealistas em 20 segundos. Mantém paredes, janelas
-          e vãos; troca acabamentos, móveis e iluminação.
-        </p>
-      </header>
-
-      <div className="mt-10 grid gap-8 lg:grid-cols-[1.1fr_1fr]">
-        {/* Coluna esquerda: foto */}
-        <div>
-          {phase === "input" || phase === "loading" ? (
-            <PhotoDropzone file={file} previewUrl={previewUrl} onFile={setFile} />
-          ) : (
-            <div className="overflow-hidden rounded-2xl border border-border bg-card">
-              <p className="border-b border-border bg-muted/50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-muted-foreground">
-                Foto original
-              </p>
-              {previewUrl && (
-                <img
-                  src={previewUrl}
-                  alt="Foto original"
-                  className="block max-h-[70vh] w-full object-contain"
-                />
+    <div className="flex min-w-0 flex-1 flex-col lg:flex-row">
+      {/* Trilho de controles — permanente. Antes ele era substituído pelo
+          resultado, e trocar o estilo exigia voltar uma fase e perder as
+          propostas na tela. */}
+      <aside className="shrink-0 border-b border-border/60 bg-card lg:sticky lg:top-0 lg:flex lg:max-h-[calc(100vh-76px)] lg:w-[300px] lg:flex-col lg:border-b-0 lg:border-r">
+        <div className="flex flex-col gap-6 overflow-y-auto p-6 lg:flex-1">
+          <div>
+            <RailLabel>Ambiente</RailLabel>
+            <div className="mt-3">
+              {previewUrl ? (
+                <>
+                  <div className="overflow-hidden rounded-xl border border-border/60">
+                    <img
+                      src={previewUrl}
+                      alt="Ambiente original"
+                      className="block aspect-[4/3] w-full object-cover"
+                    />
+                  </div>
+                  <div className="mt-2.5 flex items-center justify-between gap-2">
+                    <p className="min-w-0 truncate text-[11.5px] font-light text-muted-foreground">
+                      {file?.name}
+                    </p>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => {
+                        setFile(null);
+                        setPhase("input");
+                        setVariations([]);
+                        setGenerationId(null);
+                      }}
+                      className="shrink-0 text-[11.5px] font-medium text-accent-foreground transition-colors hover:text-foreground disabled:opacity-40"
+                    >
+                      Trocar
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <PhotoDropzone file={file} previewUrl={previewUrl} onFile={setFile} />
               )}
-              <button
-                type="button"
-                onClick={() => {
-                  setFile(null);
-                  setPhase("input");
-                  setVariations([]);
-                  setGenerationId(null);
-                }}
-                className="block w-full border-t border-border bg-background px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              >
-                Trocar foto e recomeçar
-              </button>
             </div>
-          )}
-        </div>
+          </div>
 
-        {/* Coluna direita */}
-        <div>
-          {phase === "input" && !file && <HowItWorks />}
+          <div>
+            <RailLabel>Estilo</RailLabel>
+            <StylePicker
+              compact
+              mode={mode}
+              onMode={setMode}
+              presetId={presetId}
+              onPreset={setPresetId}
+              customPrompt={customPrompt}
+              onCustomPrompt={setCustomPrompt}
+            />
+          </div>
 
-          {phase === "input" && file && (
-            <div className="space-y-6">
-              <StylePicker
-                mode={mode}
-                onMode={setMode}
-                presetId={presetId}
-                onPreset={setPresetId}
-                customPrompt={customPrompt}
-                onCustomPrompt={setCustomPrompt}
+          <div>
+            <div className="flex items-center justify-between gap-3">
+              <RailLabel>Preservar layout</RailLabel>
+              <Switch
+                checked={keepLayout}
+                onChange={setKeepLayout}
+                label="Preservar layout do ambiente"
               />
+            </div>
+            <p className="mt-2.5 text-[11.5px] font-light leading-relaxed text-muted-foreground">
+              {keepLayout
+                ? "Mantém paredes e aberturas; troca acabamentos e mobiliário."
+                : "Deixa a IA reinterpretar o ambiente com mais liberdade."}
+            </p>
+          </div>
 
-              <div className="rounded-xl border border-border bg-card">
-                <button
-                  type="button"
-                  onClick={() => setAdvancedOpen((v) => !v)}
-                  className="flex w-full items-center justify-between px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-foreground"
-                >
-                  Ajustes finos
-                  <span className="text-muted-foreground">{advancedOpen ? "−" : "+"}</span>
-                </button>
-                {advancedOpen && (
-                  <div className="space-y-5 border-t border-border px-4 py-4">
-                    <div>
-                      <label className="block text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                        Fidelidade ao layout
-                      </label>
-                      <div className="mt-2 flex gap-2">
-                        <ToggleBtn active={!keepLayout} onClick={() => setKeepLayout(false)}>
-                          Mais criativo
-                        </ToggleBtn>
-                        <ToggleBtn active={keepLayout} onClick={() => setKeepLayout(true)}>
-                          Mais fiel
-                        </ToggleBtn>
-                      </div>
-                    </div>
+          <div>
+            <button
+              type="button"
+              onClick={() => setAdvancedOpen((v) => !v)}
+              className="flex w-full items-center justify-between text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Ajustes finos
+              <span aria-hidden="true">{advancedOpen ? "−" : "+"}</span>
+            </button>
+            {advancedOpen && (
+              <div className="mt-4 space-y-5">
+                <div>
+                  <p className="text-[11.5px] font-light text-muted-foreground">Variações</p>
+                  <div className="mt-2 flex gap-2">
+                    {([1, 2, 4] as const).map((n) => (
+                      <ToggleBtn
+                        key={n}
+                        active={nVariations === n}
+                        onClick={() => setNVariations(n)}
+                      >
+                        {n}
+                      </ToggleBtn>
+                    ))}
+                  </div>
+                </div>
 
-                    <div>
-                      <label className="block text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                        Variações
-                      </label>
-                      <div className="mt-2 flex gap-2">
-                        {([1, 2, 4] as const).map((n) => (
-                          <ToggleBtn
-                            key={n}
-                            active={nVariations === n}
-                            onClick={() => setNVariations(n)}
-                          >
-                            {n}
-                          </ToggleBtn>
-                        ))}
-                      </div>
-                    </div>
-
-                    {projects.length > 0 && (
-                      <div>
-                        <label className="block text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                          Vincular a projeto (opcional)
-                        </label>
-                        <select
-                          value={projectId ?? ""}
-                          onChange={(e) => setProjectId(e.target.value || undefined)}
-                          className="mt-2 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-accent"
-                        >
-                          <option value="">Sem projeto</option>
-                          {projects.map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {p.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
+                {projects.length > 0 && (
+                  <div>
+                    <p className="text-[11.5px] font-light text-muted-foreground">
+                      Vincular a projeto
+                    </p>
+                    <select
+                      value={projectId ?? ""}
+                      onChange={(e) => setProjectId(e.target.value || undefined)}
+                      className="mt-2 w-full rounded-lg border border-border/60 bg-background px-3 py-2 text-[12px] text-foreground outline-none focus:border-accent-foreground/40"
+                    >
+                      <option value="">Sem projeto</option>
+                      {projects.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 )}
               </div>
-
-              <div className="border-t border-border pt-5">
-                <button
-                  type="button"
-                  onClick={() => void handleGenerate()}
-                  disabled={!canGenerate}
-                  className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-primary px-7 text-[12px] font-black uppercase tracking-[0.12em] text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  {submitting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <>
-                      Redecorar ambiente <ArrowRight className="h-4 w-4" />
-                    </>
-                  )}
-                </button>
-                <p className="mt-2 text-center text-[11px] font-light text-muted-foreground">
-                  ≈ 20s · {nVariations} {nVariations === 1 ? "variação" : "variações"} · cobrança no
-                  plano do workspace
-                </p>
-              </div>
-            </div>
-          )}
-
-          {phase === "loading" && <LoadingStepper />}
-
-          {phase === "results" && previewUrl && (
-            <VariationsGrid
-              sourceUrl={previewUrl}
-              variations={variations}
-              segImageUrl={segImageUrl}
-              generationId={generationId ?? ""}
-              onAddToProject={handleAddToProject}
-              onSendToStudio={handleSendToStudio}
-              onIterate={() => void handleIterate()}
-              onChangeStyle={handleChangeStyle}
-              iterating={iterating}
-            />
-          )}
+            )}
+          </div>
         </div>
+
+        <div className="border-t border-border/60 p-6 lg:shrink-0">
+          <button
+            type="button"
+            onClick={() => void handleGenerate()}
+            disabled={!canGenerate}
+            className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-primary px-6 text-[11.5px] font-black uppercase tracking-[0.12em] text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {busy ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : phase === "results" ? (
+              <>
+                <RefreshCw className="h-4 w-4" />
+                Gerar de novo
+              </>
+            ) : (
+              <>
+                Redecorar ambiente <ArrowRight className="h-4 w-4" />
+              </>
+            )}
+          </button>
+          <p className="mt-3 text-center text-[11px] font-light text-muted-foreground">
+            ≈ 20s · {nVariations} {nVariations === 1 ? "variação" : "variações"} · cobrança no plano
+            do workspace
+          </p>
+        </div>
+      </aside>
+
+      {/* Área de resultado */}
+      <div className="min-w-0 flex-1 p-4 md:p-10">
+        {phase === "loading" ? (
+          <LoadingStepper />
+        ) : phase === "results" ? (
+          <>
+            <header>
+              <h1 className="text-[30px] font-black leading-[1.1] tracking-tight text-foreground">
+                {variations.length} {variations.length === 1 ? "proposta" : "propostas"}
+              </h1>
+              <p className="mt-2 font-light text-muted-foreground">
+                Abra o antes/depois, salve no projeto ou mande para o Studio. Mudou de ideia? Ajuste
+                o estilo à esquerda e gere de novo.
+              </p>
+            </header>
+            <div className="mt-8">
+              <VariationsGrid
+                sourceUrl={previewUrl ?? ""}
+                variations={variations}
+                segImageUrl={segImageUrl}
+                generationId={generationId ?? ""}
+                onAddToProject={handleAddToProject}
+                onSendToStudio={handleSendToStudio}
+                onIterate={() => void handleIterate()}
+                iterating={iterating}
+              />
+            </div>
+          </>
+        ) : (
+          <>
+            <header>
+              <h1 className="text-[30px] font-black leading-[1.1] tracking-tight text-foreground">
+                Redecorar ambiente
+              </h1>
+              <p className="mt-2 max-w-xl font-light text-muted-foreground">
+                Foto real do ambiente → propostas fotorrealistas em ~20 segundos. Mantém paredes,
+                janelas e vãos; troca acabamentos, móveis e iluminação.
+              </p>
+            </header>
+            <div className="mt-8 max-w-2xl">{file ? <ReadyToGenerate /> : <HowItWorks />}</div>
+          </>
+        )}
       </div>
     </div>
+  );
+}
+
+function RailLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+      {children}
+    </p>
+  );
+}
+
+function Switch({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={() => onChange(!checked)}
+      className={`flex h-[22px] w-[38px] shrink-0 items-center rounded-full px-[3px] transition-colors ${
+        checked ? "justify-end bg-accent-foreground" : "justify-start bg-border"
+      }`}
+    >
+      <span className="block h-4 w-4 rounded-full bg-card" />
+    </button>
   );
 }
 
@@ -395,14 +454,34 @@ function ToggleBtn({
     <button
       type="button"
       onClick={onClick}
-      className={`flex-1 rounded-md border px-3 py-2 text-[12px] font-bold transition-colors ${
+      className={`flex-1 rounded-lg border px-3 py-2 text-[12px] font-semibold transition-colors ${
         active
-          ? "border-accent bg-accent/10 text-accent"
-          : "border-border bg-background text-muted-foreground hover:border-accent/40 hover:text-foreground"
+          ? "border-accent-foreground/25 bg-accent text-accent-foreground"
+          : "border-border/60 bg-background text-muted-foreground hover:text-foreground"
       }`}
     >
       {children}
     </button>
+  );
+}
+
+function ReadyToGenerate() {
+  return (
+    <div
+      className="flex items-start gap-4 rounded-[20px] bg-card p-6"
+      style={{ boxShadow: "var(--via-shadow-card)" }}
+    >
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-accent text-accent-foreground">
+        <ImagePlus className="h-[22px] w-[22px]" strokeWidth={1.75} />
+      </div>
+      <div>
+        <p className="font-bold text-foreground">Tudo pronto</p>
+        <p className="mt-1 text-sm font-light leading-relaxed text-muted-foreground">
+          Confira o estilo no painel à esquerda e clique em <strong>Redecorar ambiente</strong>. As
+          propostas aparecem aqui — você pode fechar a aba, avisamos quando ficarem prontas.
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -420,22 +499,22 @@ function HowItWorks() {
     },
     {
       n: 3,
-      title: "Recebe 4 variações",
+      title: "Recebe as variações",
       desc: "Em ~20s. Salve, mande pro Studio, ou compartilhe com o cliente.",
     },
   ];
   return (
-    <div className="rounded-2xl border border-border bg-card p-6">
+    <div className="rounded-[20px] bg-card p-6" style={{ boxShadow: "var(--via-shadow-card)" }}>
       <div className="mb-5 flex items-center gap-2">
-        <Sparkles className="h-4 w-4 text-accent" strokeWidth={1.75} />
-        <p className="text-[11px] font-black uppercase tracking-[0.12em] text-muted-foreground">
+        <Sparkles className="h-4 w-4 text-accent-foreground" strokeWidth={1.75} />
+        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
           Como funciona
         </p>
       </div>
       <div className="space-y-5">
         {steps.map((s) => (
           <div key={s.n} className="flex gap-4">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/15 text-[12px] font-black text-accent">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-[12px] font-black text-accent-foreground">
               {s.n}
             </div>
             <div>
@@ -445,7 +524,7 @@ function HowItWorks() {
           </div>
         ))}
       </div>
-      <div className="mt-6 flex gap-2 rounded-md border border-border bg-muted/50 p-3">
+      <div className="mt-6 flex gap-2 rounded-lg border border-border/60 bg-muted/50 p-3">
         <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
         <p className="text-[11px] font-light leading-relaxed text-muted-foreground">
           Mantém geometria do ambiente (paredes, vãos, janelas). Troca acabamentos, móveis e
