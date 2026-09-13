@@ -3,6 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowRight, Loader2, Sparkles, Info } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { pollGenerationStatus } from "@/lib/poll-generation";
 import { useAuth } from "@/lib/auth-context";
 import { PhotoDropzone } from "@/components/redecorar/PhotoDropzone";
 import { StylePicker } from "@/components/redecorar/StylePicker";
@@ -78,33 +79,13 @@ function RedecorarPage() {
     return customPrompt.trim().length >= 4;
   }, [file, mode, presetId, customPrompt, submitting]);
 
-  // Polling até generations.status virar succeeded/failed.
   // Edge function retorna 202 imediato; o processamento dura ~2-3 min.
-  const pollGeneration = async (genId: string, timeoutMs = 5 * 60 * 1000) => {
-    const startedAt = Date.now();
-    while (Date.now() - startedAt < timeoutMs) {
-      await new Promise((r) => setTimeout(r, 3000));
-      const { data, error } = await supabase
-        .from("generations")
-        .select("status,error_message,metadata")
-        .eq("id", genId)
-        .maybeSingle();
-      if (error) continue;
-      if (!data) continue;
-      const status = (data as { status?: string }).status;
-      if (status === "succeeded") {
-        const meta = (data as { metadata?: Record<string, unknown> }).metadata ?? {};
-        const vars = (meta.variations as RedecorateVariation[] | undefined) ?? [];
-        return { ok: true as const, variations: vars };
-      }
-      if (status === "failed") {
-        const errMsg =
-          (data as { error_message?: string }).error_message ??
-          "geração falhou";
-        return { ok: false as const, error: errMsg };
-      }
-    }
-    return { ok: false as const, error: "tempo esgotado — verifique a biblioteca" };
+  const pollGeneration = async (genId: string) => {
+    const outcome = await pollGenerationStatus(genId);
+    if (!outcome) return { ok: false as const, error: "cancelado" };
+    if (!outcome.ok) return { ok: false as const, error: outcome.error };
+    const vars = (outcome.metadata.variations as RedecorateVariation[] | undefined) ?? [];
+    return { ok: true as const, variations: vars };
   };
 
   const handleGenerate = async () => {

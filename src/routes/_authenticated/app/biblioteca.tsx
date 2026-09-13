@@ -799,11 +799,12 @@ function CandidatesPanel({
   onChange: () => void;
   disabled: boolean;
 }) {
+  // Hooks antes de qualquer early return: a contagem de candidatos muda entre
+  // renders (realtime) e um return antecipado acima do useState quebraria a
+  // ordem dos hooks.
+  const [busyVariant, setBusyVariant] = useState<string | null>(null);
   const meta = (gen.metadata ?? {}) as { candidates?: CandidateMeta[] };
   const candidates = Array.isArray(meta.candidates) ? meta.candidates : [];
-  if (candidates.length < 2) return null;
-
-  const [busyVariant, setBusyVariant] = useState<string | null>(null);
   const primaryUrl = gen.final_render_url ?? gen.thumbnail_url;
 
   async function setAsPrimary(c: CandidateMeta) {
@@ -825,6 +826,8 @@ function CandidatesPanel({
       onChange();
     }
   }
+
+  if (candidates.length < 2) return null;
 
   return (
     <Section label={`Candidatos (${candidates.length})`}>

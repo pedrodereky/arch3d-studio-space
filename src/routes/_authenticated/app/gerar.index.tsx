@@ -9,12 +9,20 @@ import {
   Loader2,
   RefreshCw,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type DragEvent,
+} from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 import { RefinePromptDialog } from "@/components/gerar/RefinePromptDialog";
+import { pollGenerationStatus } from "@/lib/poll-generation";
 
 type GerarSearch = { from?: string };
 
@@ -271,32 +279,72 @@ function GerarPage() {
 
   useEffect(() => {
     if (!progressGenId) return;
+    const genId = progressGenId;
+    // `settled` garante que realtime e polling não resolvam a mesma geração duas vezes.
+    let settled = false;
+
+    const onSucceeded = async () => {
+      if (settled) return;
+      settled = true;
+      await refreshProfile?.();
+      navigate({ to: "/app/biblioteca", search: { destacar: genId } } as never);
+    };
+
+    const onFailed = (description?: string) => {
+      if (settled) return;
+      settled = true;
+      toast.error("Geração falhou", description ? { description } : undefined);
+      setProgressGenId(null);
+    };
+
+    // Caminho rápido: realtime.
     const channel = supabase
-      .channel(`gen-${progressGenId}`)
+      .channel(`gen-${genId}`)
       .on(
         "postgres_changes",
         {
           event: "UPDATE",
           schema: "public",
           table: "generations",
-          filter: `id=eq.${progressGenId}`,
+          filter: `id=eq.${genId}`,
         },
-        async (payload) => {
-          const row = payload.new as { status: string };
+        (payload) => {
+          const row = payload.new as { status: string; error_message?: string | null };
           if (row.status === "succeeded") {
-            await refreshProfile?.();
-            navigate({
-              to: "/app/biblioteca",
-              search: { destacar: progressGenId },
-            } as never);
+            void onSucceeded();
           } else if (row.status === "failed" || row.status === "cancelled") {
-            toast.error("Geração falhou");
-            setProgressGenId(null);
+            onFailed(row.error_message ?? undefined);
           }
         },
       )
       .subscribe();
+
+    // Rede de segurança: se o websocket não conectar, o polling encerra o overlay.
+    void (async () => {
+      const outcome = await pollGenerationStatus(genId, {
+        timeoutMs: 10 * 60 * 1000,
+        isCancelled: () => settled,
+      });
+      if (!outcome || settled) return;
+      if (outcome.ok) {
+        void onSucceeded();
+        return;
+      }
+      if (outcome.status === "timeout") {
+        settled = true;
+        toast.message("Ainda processando", {
+          description:
+            "A geração continua rodando em segundo plano — avisamos quando ficar pronta.",
+        });
+        setProgressGenId(null);
+        navigate({ to: "/app/biblioteca", search: { destacar: genId } } as never);
+        return;
+      }
+      onFailed(outcome.error);
+    })();
+
     return () => {
+      settled = true;
       void supabase.removeChannel(channel);
     };
   }, [progressGenId, navigate, refreshProfile]);
@@ -648,6 +696,8 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+
 function Dropzone({
   file,
   onFile,
@@ -659,17 +709,55 @@ function Dropzone({
   accept?: string;
   hint?: string;
 }) {
-  const handle = (e: ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    if (f.size > 10 * 1024 * 1024) {
+  const [dragging, setDragging] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  // Revoga o object URL ao trocar/remover o arquivo — criá-lo no corpo do
+  // render vazava um blob por render enquanto a aba estivesse aberta.
+  useEffect(() => {
+    if (!file || file.type === "application/pdf") {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+
+  // O atributo `accept` filtra o seletor nativo, mas não o arquivo solto:
+  // validação precisa rodar nos dois caminhos.
+  const acceptFile = (f: File) => {
+    const allowed = accept
+      .split(",")
+      .map((a) => a.trim())
+      .filter(Boolean);
+    const matches = allowed.some((a) => {
+      if (a.endsWith("/*")) return f.type.startsWith(a.slice(0, -1));
+      if (a.startsWith(".")) return f.name.toLowerCase().endsWith(a.toLowerCase());
+      return f.type === a;
+    });
+    if (!matches) {
+      toast.error("Formato não suportado", {
+        description: `Envie ${allowed.join(" ou ")}.`,
+      });
+      return;
+    }
+    if (f.size > MAX_UPLOAD_BYTES) {
       toast.error("Arquivo maior que 10MB");
       return;
     }
     onFile(f);
   };
+
+  const handle = (e: ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    acceptFile(f);
+    // Permite reenviar o mesmo arquivo depois de removê-lo.
+    e.target.value = "";
+  };
+
   if (file) {
-    const url = URL.createObjectURL(file);
     const isPdf = file.type === "application/pdf";
     return (
       <div className="flex items-center gap-4 rounded-2xl border border-border bg-card p-4">
@@ -679,7 +767,9 @@ function Dropzone({
               PDF
             </span>
           ) : (
-            <img src={url} alt={file.name} className="h-full w-full object-cover" />
+            previewUrl && (
+              <img src={previewUrl} alt={file.name} className="h-full w-full object-cover" />
+            )
           )}
         </div>
         <div className="min-w-0 flex-1">
@@ -700,7 +790,24 @@ function Dropzone({
     );
   }
   return (
-    <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-border bg-card px-6 py-12 text-center transition-colors hover:bg-muted/40">
+    <label
+      onDragOver={(e: DragEvent<HTMLLabelElement>) => {
+        e.preventDefault();
+        setDragging(true);
+      }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={(e: DragEvent<HTMLLabelElement>) => {
+        e.preventDefault();
+        setDragging(false);
+        const f = e.dataTransfer.files?.[0];
+        if (f) acceptFile(f);
+      }}
+      className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border border-dashed px-6 py-12 text-center transition-colors ${
+        dragging
+          ? "border-accent bg-accent/5"
+          : "border-border bg-card hover:bg-muted/40"
+      }`}
+    >
       <ImageUp className="h-10 w-10 text-muted-foreground" strokeWidth={1.5} />
       <span className="max-w-sm text-sm font-light text-muted-foreground">{hint}</span>
       <input type="file" accept={accept} onChange={handle} className="hidden" />
