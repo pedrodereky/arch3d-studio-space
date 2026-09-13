@@ -204,7 +204,7 @@ function ProjectDetailPage() {
       </div>
 
       <header
-        className="rounded-xl border border-border/60 bg-card p-6"
+        className="rounded-[20px] bg-card p-6"
         style={{ boxShadow: "var(--via-shadow-card)" }}
       >
         {editingMeta ? (
@@ -222,7 +222,7 @@ function ProjectDetailPage() {
                 <input
                   value={client}
                   onChange={(e) => setClient(e.target.value)}
-                  className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-accent"
+                  className="h-10 w-full rounded-lg border border-border/60 bg-card px-3.5 text-sm font-light outline-none focus:border-accent-foreground/40"
                 />
               </label>
               <label className="block">
@@ -233,7 +233,7 @@ function ProjectDetailPage() {
                   type="date"
                   value={deadline}
                   onChange={(e) => setDeadline(e.target.value)}
-                  className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-accent"
+                  className="h-10 w-full rounded-lg border border-border/60 bg-card px-3.5 text-sm font-light outline-none focus:border-accent-foreground/40"
                 />
               </label>
             </div>
@@ -246,7 +246,7 @@ function ProjectDetailPage() {
                 onChange={(e) => setBriefing(e.target.value)}
                 rows={4}
                 placeholder="Notas, escopo, referências do projeto."
-                className="w-full rounded-md border border-border bg-background p-3 text-sm font-light outline-none focus:border-accent"
+                className="w-full rounded-lg border border-border/60 bg-card p-3.5 text-sm font-light outline-none focus:border-accent-foreground/40"
               />
             </label>
             <div className="flex gap-2">
@@ -279,7 +279,9 @@ function ProjectDetailPage() {
         ) : (
           <div className="flex items-start justify-between gap-6">
             <div className="flex-1">
-              <h1 className="text-3xl font-black tracking-tight text-foreground">{project.name}</h1>
+              <h1 className="text-[30px] font-black leading-[1.1] tracking-tight text-foreground">
+                {project.name}
+              </h1>
               <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-sm font-light text-muted-foreground">
                 {project.client_name && (
                   <span className="inline-flex items-center gap-1.5">
@@ -302,7 +304,7 @@ function ProjectDetailPage() {
             <div className="flex shrink-0 flex-col gap-2">
               <button
                 onClick={() => setEditingMeta(true)}
-                className="inline-flex h-9 items-center rounded-full border border-border px-4 text-xs font-bold uppercase tracking-[0.12em] hover:bg-muted"
+                className="inline-flex h-9 items-center rounded-full border border-border/60 px-4 text-[11px] font-black uppercase tracking-[0.12em] transition-colors hover:bg-muted"
               >
                 Editar
               </button>
@@ -320,7 +322,7 @@ function ProjectDetailPage() {
       {/* Compartilhar */}
       {shareUrl && (
         <div
-          className="flex items-center gap-3 rounded-xl border border-border/60 bg-card p-4"
+          className="flex items-center gap-3 rounded-[20px] bg-card p-4"
           style={{ boxShadow: "var(--via-shadow-card)" }}
         >
           <Share2 className="h-4 w-4 shrink-0 text-accent" />
@@ -348,20 +350,20 @@ function ProjectDetailPage() {
           </h2>
           <button
             onClick={() => setOpenAdd(true)}
-            className="inline-flex h-9 items-center gap-2 rounded-full bg-primary px-5 text-xs font-bold uppercase tracking-[0.12em] text-primary-foreground hover:bg-primary/90"
+            className="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-6 text-[11px] font-black uppercase tracking-[0.12em] text-primary-foreground transition-colors hover:bg-primary/90"
           >
             <Plus className="h-3.5 w-3.5" /> Adicionar
           </button>
         </div>
 
         {assets.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border/60 bg-card/50 p-12 text-center">
+          <div className="rounded-[20px] border border-dashed border-border/60 p-12 text-center">
             <p className="text-sm font-light text-muted-foreground">
               Nenhuma geração neste projeto ainda.
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3.5 md:grid-cols-3 xl:grid-cols-4">
             {assets.map((a) => {
               const g = a.generations;
               if (!g) return null;
@@ -369,7 +371,8 @@ function ProjectDetailPage() {
               return (
                 <div
                   key={g.id}
-                  className="group relative overflow-hidden rounded-lg border border-border bg-card"
+                  className="group relative overflow-hidden rounded-xl bg-card"
+                  style={{ boxShadow: "var(--via-shadow-card)" }}
                 >
                   <Link
                     to="/app/biblioteca"
