@@ -10,7 +10,10 @@ export type GptImage2Input = {
 };
 
 export type GptImage2Opts = {
-  aspect_ratio?: "1:1" | "16:9" | "9:16" | "4:3" | "3:4";
+  // Mesmo conjunto do helper da OpenAI: os dois embrulham o mesmo modelo
+  // gpt-image-2, e "3:2" já era passado por aqui em runtime (orchestrate
+  // index.ts:481) sem que nada typecheckasse. Estreitar mudaria comportamento.
+  aspect_ratio?: "1:1" | "16:9" | "9:16" | "4:3" | "3:4" | "3:2" | "2:3";
   quality?: "auto" | "low" | "medium" | "high";
   output_format?: "png" | "webp" | "jpeg";
   timeoutMs?: number;

@@ -5,6 +5,9 @@
 // transladado para (x, 0, y) do blueprint e rotacionado em torno de Y.
 
 import { Document, WebIO, type Node } from "https://esm.sh/@gltf-transform/core@4.0.7";
+// `Document.merge()` existia na v3 e saiu na v4 — `mergeDocuments(alvo, origem)`
+// é o substituto. A chamada antiga passava no lint e teria estourado em runtime.
+import { mergeDocuments } from "https://esm.sh/@gltf-transform/functions@4.0.7";
 import type { Furniture } from "./floorplan-extract.ts";
 import type { MeshResult } from "./furniture-mesh.ts";
 
@@ -36,7 +39,7 @@ export async function mergeFurnitureIntoGLB(
       const extDoc = await io.readBinary(m.bytes);
       // Snapshot scenes BEFORE merge so we can identify the new ones reliably
       const scenesBefore = new Set(baseDoc.getRoot().listScenes());
-      baseDoc.merge(extDoc);
+      mergeDocuments(baseDoc, extDoc);
 
       const newScenes = baseDoc
         .getRoot()
