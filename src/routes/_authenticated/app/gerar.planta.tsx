@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 import type { TablesInsert } from "@/integrations/supabase/types";
+import { PlantasTabs } from "@/components/gerar/PlantasTabs";
 
 export const Route = createFileRoute("/_authenticated/app/gerar/planta")({
   component: GerarPlantaPage,
@@ -212,10 +213,13 @@ function GerarPlantaPage() {
   const busy = submitting || !!progressGenId;
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-10">
+    <div className="mx-auto max-w-4xl">
       <header className="mb-8">
-        <h1 className="text-3xl font-black text-foreground">Render de planta</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <PlantasTabs className="mb-6" />
+        <h1 className="text-[30px] font-black leading-[1.1] tracking-tight text-foreground">
+          Render de planta
+        </h1>
+        <p className="mt-2 font-light text-muted-foreground">
           Suba a planta executiva (PDF ou imagem) e a IA gera um render isométrico 3D fotorrealista
           do espaço mobiliado.
         </p>
