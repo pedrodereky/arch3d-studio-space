@@ -16,6 +16,7 @@ import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 import { RefinePromptDialog } from "@/components/gerar/RefinePromptDialog";
 import { pollGenerationStatus } from "@/lib/poll-generation";
+import type { TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 
 type GerarSearch = { from?: string };
 
@@ -209,18 +210,15 @@ function GerarPage() {
     try {
       const { data: gen, error: insErr } = await supabase
         .from("generations")
-        .insert(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          {
-            user_id: user.id,
-            pipeline_type: pipelineId,
-            engine: effectiveEngine,
-            status: "queued",
-            source_images: [],
-            prompt: isTextPipeline ? effectivePrompt : instruction || null,
-            edit_instruction: pipelineId === "edit" ? editPrompt : null,
-          } as any,
-        )
+        .insert({
+          user_id: user.id,
+          pipeline_type: pipelineId,
+          engine: effectiveEngine,
+          status: "queued",
+          source_images: [],
+          prompt: isTextPipeline ? effectivePrompt : instruction || null,
+          edit_instruction: pipelineId === "edit" ? editPrompt : null,
+        } as TablesInsert<"generations">)
         .select("id")
         .single();
       if (insErr || !gen) throw insErr ?? new Error("Falha ao criar geração");
@@ -237,11 +235,10 @@ function GerarPage() {
 
         await supabase
           .from("generations")
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           .update({
             source_images: sources,
             prompt: instruction,
-          } as any)
+          } as TablesUpdate<"generations">)
           .eq("id", gen.id);
       }
 

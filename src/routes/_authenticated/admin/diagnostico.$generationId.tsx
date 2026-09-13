@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, ArrowLeft, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import type { TablesUpdate } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/_authenticated/admin/diagnostico/$generationId")({
   component: DiagnosticoDetailPage,
@@ -103,7 +104,8 @@ function DiagnosticoDetailPage() {
   const toggle = (id: string) =>
     setExpanded((prev) => {
       const n = new Set(prev);
-      n.has(id) ? n.delete(id) : n.add(id);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
       return n;
     });
 
@@ -112,7 +114,7 @@ function DiagnosticoDetailPage() {
     setReprocessing(true);
     try {
       const meta = { ...(gen?.metadata ?? {}), diagnostics_mode: true };
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const { error } = await supabase
         .from("generations")
         .update({
@@ -121,7 +123,7 @@ function DiagnosticoDetailPage() {
           progress_percent: 0,
           progress_stage: null,
           metadata: meta,
-        } as any)
+        } as TablesUpdate<"generations">)
         .eq("id", generationId);
       if (error) throw error;
       // limpa logs anteriores na UI

@@ -4,6 +4,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
+import type { TablesInsert } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/_authenticated/app/gerar/planta")({
   component: GerarPlantaPage,
@@ -130,7 +131,7 @@ function GerarPlantaPage() {
     try {
       const { data: gen, error: insErr } = await supabase
         .from("generations")
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         .insert({
           user_id: user.id,
           pipeline_type: "floorplan_render",
@@ -142,7 +143,7 @@ function GerarPlantaPage() {
             view_mode: viewMode,
             ...(diagnosticsMode ? { diagnostics_mode: true } : {}),
           },
-        } as any)
+        } as TablesInsert<"generations">)
         .select("id")
         .single();
       if (insErr || !gen) throw insErr ?? new Error("Falha ao criar geração");

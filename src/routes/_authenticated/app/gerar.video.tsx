@@ -43,7 +43,7 @@ function GerarVideoPage() {
 
       // identifica renders que já têm vídeo derivado
       const ids = list.map((g) => g.id);
-      let videoSet = new Set<string>();
+      const videoSet = new Set<string>();
       if (ids.length) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: vids } = await (supabase as any)
