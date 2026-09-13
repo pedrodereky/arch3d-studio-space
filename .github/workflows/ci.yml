@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Formatação, lint, typecheck e build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      # `npm ci` exigiria um package-lock.json em dia com o package.json, e o
+      # versionado está defasado (não lista @supabase/supabase-js, @xyflow/react
+      # e outras dependências que o app importa). `bun install --frozen-lockfile`
+      # também não serve aqui: o bun.lockb fixa parte dos pacotes no registry
+      # privado da Lovable, que um runner público não acessa (403).
+      # Ver a nota sobre lockfiles no README antes de trocar isto.
+      - name: Instalar dependências
+        run: npm install --no-audit --no-fund
+
+      - name: Formatação
+        run: npx prettier --check .
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Build
+        run: npm run build

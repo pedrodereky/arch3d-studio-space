@@ -932,7 +932,6 @@ function StudioInner() {
       if (target) {
         const MAX_WAIT_MS = 8 * 60_000;
         const t0 = Date.now();
-        // eslint-disable-next-line no-constant-condition
         while (true) {
           await new Promise((r) => setTimeout(r, 2000));
           const { data: r } = await supabase
@@ -1024,7 +1023,6 @@ function StudioInner() {
         if (target) {
           const MAX_WAIT_MS = 8 * 60_000;
           const t0 = Date.now();
-          // eslint-disable-next-line no-constant-condition
           while (true) {
             await new Promise((r) => setTimeout(r, 2000));
             const { data: r } = await supabase

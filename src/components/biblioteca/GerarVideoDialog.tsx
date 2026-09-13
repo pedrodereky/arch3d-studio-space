@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import type { TablesInsert } from "@/integrations/supabase/types";
 
 type Props = {
   open: boolean;
@@ -64,7 +65,7 @@ export function GerarVideoDialog({
     try {
       const { data: gen, error: insErr } = await supabase
         .from("generations")
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         .insert({
           user_id: user.id,
           pipeline_type: "render_to_video",
@@ -80,7 +81,7 @@ export function GerarVideoDialog({
             camera_mode: cameraMode,
             source_generation_id: sourceGenerationId,
           },
-        } as any)
+        } as TablesInsert<"generations">)
         .select("id")
         .single();
       if (insErr || !gen) throw insErr ?? new Error("Falha ao criar geração");
