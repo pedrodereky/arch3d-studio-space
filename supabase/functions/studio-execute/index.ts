@@ -37,7 +37,9 @@ function base64ToBytes(b64: string): Uint8Array {
   return out;
 }
 
-async function fetchAsBytes(url: string): Promise<{ bytes: Uint8Array; mime: string }> {
+async function fetchAsBytes(
+  url: string,
+): Promise<{ bytes: Uint8Array<ArrayBuffer>; mime: string }> {
   const r = await fetch(url);
   if (!r.ok) throw new Error(`fetch ${url}: ${r.status}`);
   const mime = r.headers.get("content-type") ?? "image/png";
@@ -61,7 +63,9 @@ async function uploadResult(
   return { url: data?.signedUrl ?? path, path };
 }
 
-type ImgIn = { url?: string; bytes?: Uint8Array; mime?: string };
+// bytes como Uint8Array<ArrayBuffer> para casar com o que o helper da OpenAI
+// exige — `BlobPart` não aceita ArrayBufferLike.
+type ImgIn = { url?: string; bytes?: Uint8Array<ArrayBuffer>; mime?: string };
 
 async function imgToDataUrl(img: ImgIn): Promise<{ dataUrl: string; mime: string }> {
   if (img.bytes && img.mime) {
@@ -118,7 +122,7 @@ async function callGptImage2(
 ): Promise<{ bytes: Uint8Array; mime: string }> {
   const apiKey = (await getSecret("OPENAI_API_KEY")) ?? Deno.env.get("OPENAI_API_KEY");
   if (!apiKey) throw new Error("OPENAI_API_KEY ausente");
-  const inputBytes: { bytes: Uint8Array; mime: string }[] = [];
+  const inputBytes: { bytes: Uint8Array<ArrayBuffer>; mime: string }[] = [];
   for (const img of inputs) {
     if (img.bytes && img.mime) inputBytes.push({ bytes: img.bytes, mime: img.mime });
     else if (img.url) inputBytes.push(await fetchAsBytes(img.url));
