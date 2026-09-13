@@ -1,0 +1,142 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mulish:wght@300;400;600;900&display=swap">
+  <style>
+    body { margin:0; font-family:'Avenir LT Std','Avenir Next',Avenir,'Mulish','Helvetica Neue',sans-serif; -webkit-font-smoothing:antialiased; }
+    a { color:#0A4F95; text-decoration:none; } a:hover { color:#02162A; }
+    .lbl { font-size:10px; font-weight:900; letter-spacing:.18em; text-transform:uppercase; color:#6B7A8D; }
+    .nav { display:flex; align-items:center; gap:11px; padding:9px 12px; border-radius:8px; font-size:14px; color:#02162A; }
+    .nav-on { background:#E8F0FB; color:#0A4F95; font-weight:600; }
+    .sub { padding:7px 12px 7px 40px; border-radius:8px; font-size:13px; color:#6B7A8D; }
+    .sub-on { background:#E8F0FB; color:#0A4F95; font-weight:600; }
+    .card { border-radius:20px; background:#FFFFFF; box-shadow:0 1px 3px rgba(2,22,42,.08), 0 4px 16px rgba(2,22,42,.06); }
+    .chip { height:32px; padding:0 14px; border-radius:999px; display:flex; align-items:center; font-size:12px; }
+  </style>
+</helmet>
+
+<div style="width:1440px; height:900px; display:flex; background:#F9F9F9; color:#02162A; overflow:hidden;">
+  <aside style="width:244px; flex-shrink:0; background:#FFFFFF; border-right:1px solid rgba(2,22,42,.08); display:flex; flex-direction:column;">
+    <div style="height:76px; display:flex; align-items:center; gap:10px; padding:0 24px; border-bottom:1px solid rgba(2,22,42,.08);">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#02162A" stroke-width="1.6" stroke-linejoin="round"><path d="M12 2.5 21 7.5v9L12 21.5 3 16.5v-9z"/><path d="M12 12 21 7.5M12 12v9.5M12 12 3 7.5" stroke-width="1.2"/></svg><span style="font-size:15px; font-weight:900; letter-spacing:-.01em;">Arq3D</span>
+    </div>
+    <nav style="flex:1; display:flex; flex-direction:column; gap:2px; padding:20px 14px; overflow:hidden;">
+      <div class="nav"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6B7A8D" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/></svg>Dashboard</div>
+      <div style="margin-top:14px; padding:0 12px 8px;" class="lbl">Gerar</div>
+      <div style="display:flex; flex-direction:column; gap:2px;">
+        <div class="nav nav-on"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 20 8v8l-8 4.5L4 16V8z"/></svg>Objetos 3D</div>
+        <div class="nav"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6B7A8D" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20 15 9l-1.5-1.5L2.5 18.5z"/><path d="M17 3.5v4M15 5.5h4M19.5 12v3M18 13.5h3"/></svg>Redecorar</div>
+        <div class="nav"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6B7A8D" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 6.5h17v11h-17z"/><path d="M10 6.5v11M3.5 12H10" stroke-width="1.2"/></svg>Plantas</div>
+        <div class="nav"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6B7A8D" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 6.5h11v11h-11z"/><path d="m14.5 11 6-3v8l-6-3z"/></svg>Vídeo POV</div>
+      </div>
+      <div style="margin-top:18px; display:flex; flex-direction:column; gap:2px;">
+        <div class="nav"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6B7A8D" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="12" r="2.5"/><circle cx="6" cy="18" r="2.5"/><path d="M8.5 7.2 15.5 11M8.5 16.8 15.5 13"/></svg>Studio</div>
+        <div class="nav"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6B7A8D" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5h5v15H4zM11 4.5h4v15h-4z"/><path d="m17 5.5 3 14"/></svg>Biblioteca</div>
+        <div class="nav"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6B7A8D" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 6.5h6l2 2.5h9v10h-17z"/></svg>Projetos</div>
+      </div>
+    </nav>
+    <div style="padding:14px; border-top:1px solid rgba(2,22,42,.08); display:flex; align-items:center; gap:11px;">
+      <div style="width:32px; height:32px; border-radius:999px; background:#02162A; color:#fff; font-size:11px; font-weight:900; display:flex; align-items:center; justify-content:center;">PA</div>
+      <div style="display:flex; flex-direction:column; line-height:1.25;">
+        <span style="font-size:13px; font-weight:600;">Pedro Ayres</span>
+        <span style="font-size:11px; color:#6B7A8D;">CAU A123456-7</span>
+      </div>
+    </div>
+  </aside>
+  <main style="flex:1; display:flex; flex-direction:column; min-width:0;">
+    <header style="height:76px; flex-shrink:0; display:flex; align-items:center; justify-content:space-between; gap:24px; padding:0 40px; border-bottom:1px solid rgba(2,22,42,.08);">
+      <div style="display:flex; align-items:center; gap:9px; font-size:13px; color:#6B7A8D;"><span>Arq3D</span><span style="color:rgba(2,22,42,.25);">/</span><span>Gerar</span><span style="color:rgba(2,22,42,.25);">/</span><span style="color:#02162A; font-weight:600;">Objetos 3D</span></div>
+      <div style="display:flex; align-items:center; gap:12px;"></div>
+    </header>
+    <div style="flex:1; overflow:hidden; padding:32px 40px 0;">
+      <h1 style="margin:0; font-size:30px; font-weight:900; letter-spacing:-.02em;">Gerar objeto 3D</h1>
+      <p style="margin:7px 0 0; font-size:14px; font-weight:300; color:#6B7A8D;">Suba uma referência ou descreva o objeto. O resto é com a gente.</p>
+
+      <div style="margin-top:28px;"><span class="lbl">Como gerar</span></div>
+      <div style="display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:14px; margin-top:12px;">
+        <div style="position:relative; padding:20px; border-radius:12px; border:1.5px solid rgba(2,22,42,.10); background:#FFFFFF; ">
+      
+      <p style="margin:0; font-size:15px; font-weight:900; letter-spacing:-.01em;">Direto</p>
+      <p style="margin:8px 0 0; font-size:12px; font-weight:300; color:#6B7A8D; line-height:1.5; max-width:230px; text-wrap:pretty;">Foto pronta vira 3D na hora. Use quando o objeto já está com fundo limpo.</p>
+      <span style="display:inline-block; margin-top:14px; font-size:10px; font-weight:900; letter-spacing:.12em; text-transform:uppercase; color:#6B7A8D;">~45s</span>
+    </div>
+        <div style="position:relative; padding:20px; border-radius:12px; border:1.5px solid #0A4F95; background:#FFFFFF; box-shadow:0 1px 3px rgba(2,22,42,.08), 0 4px 16px rgba(2,22,42,.06);box-shadow:0 0 0 3px rgba(10,79,149,.14);">
+      <span style="position:absolute; right:14px; top:14px; font-size:9px; font-weight:900; letter-spacing:.12em; text-transform:uppercase; color:#1F8A5C; background:#E6F4ED; padding:3px 7px; border-radius:4px;">Recomendado</span>
+      <p style="margin:0; font-size:15px; font-weight:900; letter-spacing:-.01em;">Enriquecido</p>
+      <p style="margin:8px 0 0; font-size:12px; font-weight:300; color:#6B7A8D; line-height:1.5; max-width:230px; text-wrap:pretty;">IA limpa o fundo e gera vistas multi-view antes do 3D.</p>
+      <span style="display:inline-block; margin-top:14px; font-size:10px; font-weight:900; letter-spacing:.12em; text-transform:uppercase; color:#0A4F95;">~90s</span>
+    </div>
+        <div style="position:relative; padding:20px; border-radius:12px; border:1.5px solid rgba(2,22,42,.10); background:#FFFFFF; ">
+      
+      <p style="margin:0; font-size:15px; font-weight:900; letter-spacing:-.01em;">Edita antes</p>
+      <p style="margin:8px 0 0; font-size:12px; font-weight:300; color:#6B7A8D; line-height:1.5; max-width:230px; text-wrap:pretty;">Modifica cor, material ou tamanho antes de virar 3D.</p>
+      <span style="display:inline-block; margin-top:14px; font-size:10px; font-weight:900; letter-spacing:.12em; text-transform:uppercase; color:#6B7A8D;">~120s</span>
+    </div>
+        <div style="position:relative; padding:20px; border-radius:12px; border:1.5px solid rgba(2,22,42,.10); background:#FFFFFF; ">
+      
+      <p style="margin:0; font-size:15px; font-weight:900; letter-spacing:-.01em;">Texto para 3D</p>
+      <p style="margin:8px 0 0; font-size:12px; font-weight:300; color:#6B7A8D; line-height:1.5; max-width:230px; text-wrap:pretty;">Descreva o objeto e a IA cria o modelo do zero.</p>
+      <span style="display:inline-block; margin-top:14px; font-size:10px; font-weight:900; letter-spacing:.12em; text-transform:uppercase; color:#6B7A8D;">~150s</span>
+    </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:minmax(0,1.25fr) minmax(0,1fr); gap:24px; margin-top:32px;">
+        <div>
+          <span class="lbl">Imagem de referência</span>
+          <div class="card" style="margin-top:12px; padding:18px; display:flex; gap:18px; align-items:center;">
+            <div style="width:104px; height:104px; border-radius:12px; background:linear-gradient(155deg,#E6E9ED,#BFC6CF); flex-shrink:0;"></div>
+            <div style="min-width:0; flex:1;">
+              <p style="margin:0; font-size:13px; font-weight:600;">poltrona-referencia.jpg</p>
+              <p style="margin:5px 0 0; font-size:11.5px; color:#6B7A8D;">2,4 MB · 2048 × 1536</p>
+              <div style="display:flex; gap:8px; margin-top:14px;">
+                <div style="height:32px; padding:0 14px; border-radius:999px; border:1px solid rgba(2,22,42,.12); display:flex; align-items:center;"><span style="font-size:11px; font-weight:600;">Trocar</span></div>
+                <div style="height:32px; padding:0 14px; border-radius:999px; display:flex; align-items:center;"><span style="font-size:11px; color:#6B7A8D;">Remover</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top:22px;"><span class="lbl">Instrução adicional <span style="font-weight:400; letter-spacing:0; text-transform:none; color:#6B7A8D;">(opcional)</span></span></div>
+          <div class="card" style="margin-top:12px; padding:16px 18px; min-height:84px;">
+            <p style="margin:0; font-size:13px; font-weight:300; color:#02162A; line-height:1.55;">Veludo verde-oliva, pés em latão escovado, proporção mais baixa que a original.</p>
+          </div>
+        </div>
+
+        <div>
+          <span class="lbl">Motor</span>
+          <div class="card" style="margin-top:12px; padding:20px;">
+            <div style="display:flex; align-items:center; justify-content:space-between;">
+              <p style="margin:0; font-size:14px; font-weight:900;">Hunyuan 2.1</p>
+              <span style="font-size:9px; font-weight:900; letter-spacing:.12em; text-transform:uppercase; color:#6B7A8D; background:#F0F2F5; padding:4px 8px; border-radius:4px;">Padrão</span>
+            </div>
+            <p style="margin:9px 0 0; font-size:12px; font-weight:300; color:#6B7A8D; line-height:1.5;">Multi-view com controle por ângulo. Recomendado para todas as pipelines com imagem.</p>
+          </div>
+
+          <div class="card" style="margin-top:16px; padding:20px;">
+            <div style="display:flex; justify-content:space-between; align-items:baseline;">
+              <span style="font-size:12px; color:#6B7A8D;">Tempo estimado</span>
+              <span style="font-size:13px; font-weight:600;">~90 s</span>
+            </div>
+            <div style="height:1px; background:rgba(2,22,42,.08); margin:14px 0;"></div>
+            <div style="display:flex; justify-content:space-between; align-items:baseline;">
+              <span style="font-size:12px; color:#6B7A8D;">Custo estimado</span>
+              <span style="font-size:13px; font-weight:600;">$ 0,05</span>
+            </div>
+            <div style="height:52px; border-radius:999px; background:#02162A; display:flex; align-items:center; justify-content:center; margin-top:20px;">
+              <span style="font-size:12px; font-weight:900; letter-spacing:.12em; text-transform:uppercase; color:#fff;">Gerar 3D</span>
+            </div>
+            <p style="margin:12px 0 0; font-size:11px; font-weight:300; color:#6B7A8D; text-align:center; line-height:1.5;">Você pode fechar esta aba — avisamos quando ficar pronto.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+</body>
+</html>
