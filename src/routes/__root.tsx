@@ -76,7 +76,16 @@ export const Route = createRootRoute({
           "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/7605fd76-cdcf-4093-bc2c-0c618489faae/id-preview-c1fd17f7--853a096e-caff-4593-84be-13443c2bc0f7.lovable.app-1778102748099.png",
       },
     ],
-    links: [{ rel: "stylesheet", href: appCss }],
+    links: [
+      { rel: "stylesheet", href: appCss },
+      // Antes daqui não havia NENHUM rel="icon": o navegador caía no
+      // /favicon.ico por convenção, que não existia. O SVG atende os
+      // navegadores modernos em qualquer tamanho; os PNG são o fallback.
+      { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+      { rel: "icon", href: "/favicon-32.png", type: "image/png", sizes: "32x32" },
+      { rel: "icon", href: "/favicon-16.png", type: "image/png", sizes: "16x16" },
+      { rel: "apple-touch-icon", href: "/icon-180.png", sizes: "180x180" },
+    ],
   }),
   shellComponent: RootShell,
   component: RootComponent,

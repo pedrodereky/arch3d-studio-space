@@ -1,0 +1,25 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html",     "x": 0,    "y": 0, "w": 560, "h": 820, "title": "A · Monograma" },
+    { "file": "DirecaoB.dc.html", "x": 650,  "y": 0, "w": 560, "h": 820, "title": "B · Volume" },
+    { "file": "DirecaoC.dc.html", "x": 1300, "y": 0, "w": 560, "h": 820, "title": "C · Planta que levanta" },
+    { "file": "DirecaoD.dc.html", "x": 1950, "y": 0, "w": 560, "h": 820, "title": "D · Ponto de fuga" }
+  ],
+  "annotations": [
+    {
+      "id": "brief",
+      "x": 0,
+      "y": -190,
+      "w": 620,
+      "text": "Ícone do Arq3D Studio — quatro direções para aprovar.\n\nHoje o site não tem ícone nenhum: nada declara favicon no head, e o arquivo que existe em public/ é o logo da Viver de IA.\n\nCada prancha mostra a marca grande, depois em 64/32/16 no tamanho real — é aos 16 px que a decisão se ganha ou se perde."
+    },
+    {
+      "id": "recomendacao",
+      "x": 1300,
+      "y": -190,
+      "w": 620,
+      "text": "Minha recomendação: A (Monograma).\n\nÉ a única que aguenta 16 px sem virar outra coisa, e a letra é sua. B é bonita mas é o cubo que todo software 3D usa. C conta a história certa e falha justamente no tamanho que mais importa. D é a mais original e a mais arriscada.\n\nSe quiser as duas coisas: A no favicon, C ou D como marca grande no site."
+    }
+  ],
+  "launch": { "view": "canvas" }
+}
