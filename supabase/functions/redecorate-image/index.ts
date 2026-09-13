@@ -5,6 +5,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { callGptImage2OpenAI } from "../_shared/gpt-image-2-openai.ts";
+import { checkUserBudget } from "../_shared/spend-guard.ts";
 import { composeStylePrompt, type StylePreset } from "../_shared/redecorate-prompt.ts";
 import { createLogger } from "../_shared/pipeline-logger.ts";
 
@@ -219,6 +220,14 @@ Deno.serve(async (req) => {
 
   try {
     const userId = await getUserId(req);
+    const budget = await checkUserBudget(admin, userId);
+    if (!budget.allowed) {
+      return new Response(JSON.stringify({ ok: false, error: budget.reason }), {
+        status: 429,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const body = (await req.json()) as Body;
 
     if (!body.sourceImagePath) throw new Error("sourceImagePath obrigatório");

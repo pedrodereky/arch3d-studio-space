@@ -77,6 +77,29 @@ edge functions no painel do Supabase. Sem `REPLICATE_WEBHOOK_SECRET` o webhook
 rejeita toda chamada e **nenhuma geração 3D finaliza** — ela fica em
 `processing` até o cron marcá-la como falha.
 
+## Limite de gasto por usuário
+
+Nada no produto limitava consumo: qualquer conta cadastrada podia disparar
+gerações indefinidamente nas chaves do dono da instância.
+
+`MAX_COST_USD_PER_USER_30D`, nos secrets das edge functions, define o teto em
+dólares que um usuário pode gastar numa janela móvel de 30 dias. **Sem essa
+variável não há limite** — é opt-in, para não mudar o comportamento de uma
+instância em uso sem alguém decidir o número.
+
+O gasto é somado de `api_costs` (e não de `profiles.total_cost_usd`, para não
+depender de um acumulador que este repositório não consegue verificar). Ao
+estourar, a chamada recebe 429 antes de chegar ao provedor.
+
+Cobre os quatro pontos onde se gasta dinheiro de verdade:
+`orchestrate-generation`, `redecorate-image`, `redecorate-iterate` e
+`generate-floorplan-2d`. `studio-execute` e as funções de análise de planta
+ainda não passam pela guarda.
+
+A leitura falha aberta de propósito: se a soma de `api_costs` der erro, a
+chamada passa e o erro fica no log — derrubar todas as gerações por causa de
+uma leitura que falhou seria pior.
+
 ## verify_jwt
 
 `replicate-webhook` está declarado em `config.toml` com `verify_jwt = false`

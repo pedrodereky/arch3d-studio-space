@@ -13,6 +13,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { runFloorplanLora, downloadAsBytes } from "../_shared/replicate-floorplan.ts";
 import { composeFloorplanPrompt, type BriefingInput } from "../_shared/floorplan-prompt.ts";
 import { createLogger } from "../_shared/pipeline-logger.ts";
+import { checkUserBudget } from "../_shared/spend-guard.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -264,6 +265,14 @@ Deno.serve(async (req) => {
       .in("status", ["queued", "processing"]);
     if ((inProgress ?? 0) >= 5) {
       throw new Error("muitas gerações em andamento, aguarde algumas finalizarem");
+    }
+
+    const budget = await checkUserBudget(admin, userId);
+    if (!budget.allowed) {
+      return new Response(JSON.stringify({ ok: false, error: budget.reason }), {
+        status: 429,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const { prompt, negativePrompt } = composeFloorplanPrompt(briefing);
