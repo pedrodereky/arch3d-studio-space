@@ -7,7 +7,10 @@
 import { Document, WebIO, type Node } from "https://esm.sh/@gltf-transform/core@4.0.7";
 // `Document.merge()` existia na v3 e saiu na v4 — `mergeDocuments(alvo, origem)`
 // é o substituto. A chamada antiga passava no lint e teria estourado em runtime.
-import { mergeDocuments } from "https://esm.sh/@gltf-transform/functions@4.0.7";
+// `?deps=` fixa o core que o pacote `functions` resolve. Sem isso o esm.sh
+// traz core@4.3.0 por baixo, e o Document do 4.0.7 importado acima deixa de
+// ser o mesmo tipo — mergeDocuments passa a recusar o próprio baseDoc.
+import { mergeDocuments } from "https://esm.sh/@gltf-transform/functions@4.0.7?deps=@gltf-transform/core@4.0.7";
 import type { Furniture } from "./floorplan-extract.ts";
 import type { MeshResult } from "./furniture-mesh.ts";
 
