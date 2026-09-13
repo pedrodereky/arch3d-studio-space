@@ -36,6 +36,8 @@ import {
 import { ModelViewer } from "@/components/library/ModelViewer";
 import { FreshImg, FreshVideo, FreshLink } from "@/components/library/FreshMedia";
 import { pipelineLabel } from "@/lib/pipeline-labels";
+import { formatDistanceToNow } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 type BibliotecaSearch = { destacar?: string };
 
@@ -245,25 +247,26 @@ function BibliotecaPage() {
     <div className="mx-auto max-w-7xl">
       <div className="flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-end">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+          <h1 className="text-[30px] font-black leading-[1.1] tracking-tight text-foreground">
             Biblioteca
-          </p>
-          <h1 className="mt-2 text-4xl font-black tracking-tight text-foreground">Suas gerações</h1>
-          <p className="mt-3 max-w-xl font-light text-muted-foreground">
-            Tudo que você gerou aparece aqui. Baixe, torne público ou adicione a um projeto.
+          </h1>
+          <p className="mt-2 max-w-xl font-light text-muted-foreground">
+            Tudo que você já gerou, com os arquivos prontos para baixar.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => navigate({ to: "/app/gerar" })}
-          className="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-6 text-[12px] font-black uppercase tracking-[0.12em] text-primary-foreground transition-colors hover:bg-primary/90"
-        >
-          <Sparkles className="h-4 w-4" />
-          Nova geração
-        </button>
+        <div className="relative w-full sm:w-80">
+          <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Buscar por prompt ou pipeline"
+            className="h-[42px] w-full rounded-full border border-border/60 bg-card pl-10 pr-4 text-[13px] font-light text-foreground placeholder:text-muted-foreground focus:border-accent-foreground/40 focus:outline-none"
+          />
+        </div>
       </div>
 
-      <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-7 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-2">
           <FilterChip active={filter === "all"} onClick={() => setFilter("all")} count={counts.all}>
             Todas
@@ -290,19 +293,9 @@ function BibliotecaPage() {
             Falhas
           </FilterChip>
         </div>
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar por prompt ou pipeline"
-            className="h-10 w-full rounded-full border border-border bg-card pl-9 pr-4 text-sm font-light text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none sm:w-72"
-          />
-        </div>
       </div>
 
-      <div className="mt-8">
+      <div className="mt-5">
         {items === null ? (
           <div className="flex items-center justify-center py-24">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -310,7 +303,7 @@ function BibliotecaPage() {
         ) : filtered.length === 0 ? (
           <EmptyState onGenerate={() => navigate({ to: "/app/gerar" })} hasAny={items.length > 0} />
         ) : (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filtered.map((it) => (
               <Card
                 key={it.gen.id}
@@ -395,28 +388,30 @@ function Card({
 }) {
   const thumb = thumbUrl ?? gen.thumbnail_url ?? firstSource(gen.source_images);
   const hasStack = (variantTotal ?? 0) > 1;
+  const meta = [relativeDate(gen.created_at)];
+  if (hasStack) meta.push(`${variantTotal} variações`);
+  if (gen.video_url) meta.push("vídeo");
   return (
     <div className="relative">
       {hasStack && (
         <>
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-0 translate-x-2 translate-y-2 rounded-2xl border border-border/40 bg-card"
+            className="pointer-events-none absolute inset-0 translate-x-2 translate-y-2 rounded-[20px] border border-border/40 bg-card"
           />
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-0 translate-x-1 translate-y-1 rounded-2xl border border-border/50 bg-card"
+            className="pointer-events-none absolute inset-0 translate-x-1 translate-y-1 rounded-[20px] border border-border/50 bg-card"
           />
         </>
       )}
       <button
         type="button"
         onClick={onOpen}
+        style={highlighted ? undefined : { boxShadow: "var(--via-shadow-card)" }}
         className={
-          "group relative flex w-full flex-col overflow-hidden rounded-2xl border bg-card text-left transition-all " +
-          (highlighted
-            ? "border-accent shadow-lg ring-2 ring-accent/30"
-            : "border-border/60 hover:border-accent/40 hover:shadow-md")
+          "group relative flex w-full flex-col overflow-hidden rounded-[20px] bg-card text-left transition-shadow " +
+          (highlighted ? "ring-2 ring-accent-foreground/40" : "hover:shadow-md")
         }
       >
         <div className="relative aspect-square w-full overflow-hidden bg-muted">
@@ -435,37 +430,29 @@ function Card({
               <LibraryIcon className="h-10 w-10 text-muted-foreground/40" strokeWidth={1.25} />
             </div>
           )}
+          {/* Fora do caminho feliz o status importa mais que o pipeline; no
+              caminho feliz, "Pronto" em todo cartão é ruído. */}
           <div className="absolute left-3 top-3">
-            <StatusPill status={gen.status} />
+            {gen.status === "succeeded" ? (
+              <span className="inline-flex items-center rounded-[4px] bg-background/92 px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-accent-foreground">
+                {pipelineLabel(gen.pipeline_type)}
+              </span>
+            ) : (
+              <StatusPill status={gen.status} />
+            )}
           </div>
           {gen.is_public && (
-            <div className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-[4px] bg-primary/90 px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-primary-foreground">
+            <div className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-[4px] bg-background/92 px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-accent-foreground">
               <Globe className="h-3 w-3" />
               Público
             </div>
           )}
-          {hasStack && (
-            <div className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-[4px] bg-foreground/85 px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-background">
-              {variantTotal} variações
-            </div>
-          )}
-          {gen.video_url && (
-            <div className="absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-[4px] bg-foreground/85 px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-background">
-              <Video className="h-3 w-3" />
-              Vídeo
-            </div>
-          )}
         </div>
-        <div className="flex flex-col gap-1 p-4">
-          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-            {pipelineLabel(gen.pipeline_type)}
-          </p>
-          <p className="line-clamp-2 text-sm font-light text-foreground">
+        <div className="px-[14px] pb-[14px] pt-3">
+          <p className="line-clamp-2 text-[12.5px] font-semibold leading-snug text-foreground">
             {gen.prompt?.trim() || "Sem descrição"}
           </p>
-          <p className="mt-1 text-[11px] font-light text-muted-foreground">
-            {formatDate(gen.created_at)}
-          </p>
+          <p className="mt-1.5 text-[11px] font-light text-muted-foreground">{meta.join(" · ")}</p>
         </div>
       </button>
     </div>
@@ -1187,23 +1174,14 @@ function FilterChip({
       type="button"
       onClick={onClick}
       className={
-        "inline-flex h-9 items-center gap-2 rounded-full border px-4 text-[11px] font-black uppercase tracking-[0.12em] transition-colors " +
+        "inline-flex h-8 items-center rounded-full border px-3.5 text-[12px] transition-colors " +
         (active
-          ? "border-accent bg-accent text-accent-foreground"
-          : "border-border bg-background text-foreground hover:bg-muted")
+          ? "border-primary bg-primary font-semibold text-primary-foreground"
+          : "border-border/60 bg-card font-light text-muted-foreground hover:text-foreground")
       }
     >
       {children}
-      <span
-        className={
-          "rounded-[4px] px-1.5 py-0.5 text-[9px] font-bold " +
-          (active
-            ? "bg-accent-foreground/15 text-accent-foreground"
-            : "bg-muted text-muted-foreground")
-        }
-      >
-        {count}
-      </span>
+      <span className="ml-1.5 opacity-60">{count}</span>
     </button>
   );
 }
@@ -1239,6 +1217,14 @@ function EmptyState({ onGenerate, hasAny }: { onGenerate: () => void; hasAny: bo
 function firstSource(src: unknown): string | null {
   if (Array.isArray(src) && typeof src[0] === "string") return src[0];
   return null;
+}
+
+function relativeDate(iso: string): string {
+  try {
+    return formatDistanceToNow(new Date(iso), { addSuffix: true, locale: ptBR });
+  } catch {
+    return formatDate(iso);
+  }
 }
 
 function formatDate(iso: string): string {
