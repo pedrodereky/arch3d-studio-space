@@ -14,6 +14,9 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { FreshImg } from "@/components/library/FreshMedia";
+import { pipelineLabel } from "@/lib/pipeline-labels";
+import { formatDistanceToNow } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 export const Route = createFileRoute("/_authenticated/app/")({
   component: DashboardPage,
@@ -25,6 +28,7 @@ type RecentGen = {
   status: string;
   thumbnail_url: string | null;
   final_render_url: string | null;
+  prompt: string | null;
   created_at: string;
 };
 
@@ -54,10 +58,10 @@ function DashboardPage() {
       const [gensRes, projectsRes, monthRes, runRes] = await Promise.all([
         supabase
           .from("generations")
-          .select("id, pipeline_type, status, thumbnail_url, final_render_url, created_at")
+          .select("id, pipeline_type, status, thumbnail_url, final_render_url, prompt, created_at")
           .eq("user_id", user!.id)
           .order("created_at", { ascending: false })
-          .limit(6),
+          .limit(4),
         supabase
           .from("projects")
           .select("id, name, client_name")
@@ -108,11 +112,23 @@ function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-[1100px] space-y-10">
-      <header>
-        <h1 className="text-3xl font-black tracking-tight text-foreground">Olá, {firstName}</h1>
-        <p className="mt-2 font-light text-muted-foreground">
-          Bem-vindo ao Arq3D Studio. Aqui está um resumo da sua conta.
-        </p>
+      <header className="flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h1 className="text-[34px] font-black leading-[1.1] tracking-tight text-foreground">
+            Olá, {firstName}
+          </h1>
+          <p className="mt-2 font-light text-muted-foreground">
+            Bem-vindo ao Arq3D Studio. Aqui está um resumo da sua conta.
+          </p>
+        </div>
+        {/* Números como tipografia, separados por fio — não como caixas. */}
+        <dl className="flex shrink-0 gap-8">
+          <Stat label="Gerações" value={String(profile?.total_generations ?? 0)} />
+          <Divider />
+          <Stat label="30 dias" value={String(monthCount)} />
+          <Divider />
+          <Stat label="Custo" value={monthCost === null ? "—" : `$ ${monthCost.toFixed(2)}`} />
+        </dl>
       </header>
 
       {error && (
@@ -124,16 +140,6 @@ function DashboardPage() {
           </div>
         </div>
       )}
-
-      {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Stat label="Gerações totais" value={String(profile?.total_generations ?? 0)} />
-        <Stat label="Últimos 30 dias" value={String(monthCount)} />
-        <Stat
-          label="Custo (30 dias)"
-          value={monthCost === null ? "—" : `$ ${monthCost.toFixed(2)}`}
-        />
-      </div>
 
       {/* Continuar de onde parou */}
       {lastRun && (
@@ -212,15 +218,17 @@ function DashboardPage() {
         </div>
       </section>
 
-      {/* Últimas gerações */}
+      {/* Trabalho recente */}
       <section>
-        <div className="mb-5 flex items-end justify-between">
-          <h2 className="text-xl font-black tracking-tight text-foreground">Últimas gerações</h2>
+        <div className="mb-4 flex items-end justify-between">
+          <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+            Trabalho recente
+          </span>
           <Link
             to="/app/biblioteca"
-            className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground hover:text-foreground"
+            className="text-[11px] font-medium text-accent-foreground hover:text-foreground"
           >
-            Ver tudo →
+            Ver biblioteca
           </Link>
         </div>
         {loading ? (
@@ -234,7 +242,7 @@ function DashboardPage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
             {gens.map((g: RecentGen) => {
               const thumb = g.thumbnail_url ?? g.final_render_url;
               return (
@@ -242,15 +250,32 @@ function DashboardPage() {
                   key={g.id}
                   to="/app/biblioteca"
                   search={{ destacar: g.id }}
-                  className="group relative aspect-square overflow-hidden rounded-lg border border-border bg-muted transition-all hover:border-accent"
+                  className="group overflow-hidden rounded-xl bg-card transition-shadow hover:shadow-md"
+                  style={{ boxShadow: "var(--via-shadow-card)" }}
                 >
-                  {thumb ? (
-                    <FreshImg src={thumb} className="h-full w-full object-cover" alt="" />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-[10px] text-muted-foreground">
-                      {g.status}
-                    </div>
-                  )}
+                  <div className="relative aspect-[4/3] bg-muted">
+                    {thumb ? (
+                      <FreshImg src={thumb} className="h-full w-full object-cover" alt="" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-[11px] font-light text-muted-foreground">
+                        {g.status === "failed" ? "falhou" : "processando"}
+                      </div>
+                    )}
+                    <span className="absolute left-3 top-3 rounded-[4px] bg-background/92 px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-accent-foreground">
+                      {pipelineLabel(g.pipeline_type)}
+                    </span>
+                  </div>
+                  <div className="px-4 pb-4 pt-3">
+                    <p className="line-clamp-2 text-[13px] font-medium leading-snug text-foreground">
+                      {g.prompt?.trim() || "Sem descrição"}
+                    </p>
+                    <p className="mt-1.5 text-[11px] font-light text-muted-foreground">
+                      {formatDistanceToNow(new Date(g.created_at), {
+                        addSuffix: true,
+                        locale: ptBR,
+                      })}
+                    </p>
+                  </div>
                 </Link>
               );
             })}
@@ -260,13 +285,15 @@ function DashboardPage() {
 
       {/* Projetos recentes */}
       <section>
-        <div className="mb-5 flex items-end justify-between">
-          <h2 className="text-xl font-black tracking-tight text-foreground">Projetos recentes</h2>
+        <div className="mb-4 flex items-end justify-between">
+          <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+            Projetos
+          </span>
           <Link
             to="/app/projetos"
-            className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground hover:text-foreground"
+            className="text-[11px] font-medium text-accent-foreground hover:text-foreground"
           >
-            Ver tudo →
+            Ver todos
           </Link>
         </div>
         {projects.length === 0 ? (
@@ -274,20 +301,21 @@ function DashboardPage() {
             <p className="text-sm font-light text-muted-foreground">Nenhum projeto criado ainda.</p>
           </div>
         ) : (
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {projects.map((p: RecentProject) => (
               <Link
                 key={p.id}
                 to="/app/projetos/$projectId"
                 params={{ projectId: p.id }}
-                className="rounded-lg border border-border bg-card p-4 transition-colors hover:border-accent/40"
+                className="flex items-center justify-between gap-4 rounded-lg border border-border/60 bg-card px-5 py-4 transition-colors hover:border-accent-foreground/30"
               >
-                <h3 className="truncate text-sm font-bold text-foreground">{p.name}</h3>
-                {p.client_name && (
-                  <p className="mt-1 truncate text-xs font-light text-muted-foreground">
-                    {p.client_name}
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-foreground">{p.name}</p>
+                  <p className="mt-1 truncate text-[11px] font-light text-muted-foreground">
+                    {p.client_name ?? "Sem cliente"}
                   </p>
-                )}
+                </div>
+                <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
               </Link>
             ))}
           </div>
@@ -299,14 +327,17 @@ function DashboardPage() {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div
-      className="rounded-xl border border-border/60 bg-card p-5"
-      style={{ boxShadow: "var(--via-shadow-card)" }}
-    >
-      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+    <div className="flex flex-col gap-1.5">
+      <dt className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
         {label}
-      </p>
-      <p className="mt-3 text-3xl font-black tracking-tight text-foreground">{value}</p>
+      </dt>
+      <dd className="text-[28px] font-black leading-none tracking-tight text-foreground">
+        {value}
+      </dd>
     </div>
   );
+}
+
+function Divider() {
+  return <div className="w-px bg-border/60" aria-hidden="true" />;
 }
