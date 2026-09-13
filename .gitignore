@@ -31,6 +31,8 @@ dist-ssr
 *.sln
 *.sw?
 
-# Canvas de design gerado a partir de design/mockups/ (~2,5 MB de editor)
-design/mockups/*.html
-!design/mockups/*.dc.html
+# Canvas de design gerado (~2,5 MB de editor embutido por arquivo).
+# Vale para qualquer pasta sob design/ — a regra antiga só cobria mockups/,
+# então uma pasta nova entrava com o payload junto.
+design/**/*.html
+!design/**/*.dc.html
