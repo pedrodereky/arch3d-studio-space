@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Sparkles,
   FolderOpen,
@@ -9,6 +9,7 @@ import {
   Loader2,
   Workflow,
   Wand2,
+  AlertCircle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -42,58 +43,66 @@ type LastRun = {
 
 function DashboardPage() {
   const { user, profile } = useAuth();
-  const [gens, setGens] = useState<RecentGen[]>([]);
-  const [projects, setProjects] = useState<RecentProject[]>([]);
-  const [monthCost, setMonthCost] = useState<number | null>(null);
-  const [monthCount, setMonthCount] = useState(0);
-  const [lastRun, setLastRun] = useState<LastRun | null>(null);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!user) return;
-    const since = new Date();
-    since.setDate(since.getDate() - 30);
+  const { data, isPending, error } = useQuery({
+    queryKey: ["dashboard", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const since = new Date();
+      since.setDate(since.getDate() - 30);
 
-    void Promise.all([
-      supabase
-        .from("generations")
-        .select("id, pipeline_type, status, thumbnail_url, final_render_url, created_at")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(6),
-      supabase
-        .from("projects")
-        .select("id, name, client_name")
-        .eq("user_id", user.id)
-        .order("updated_at", { ascending: false })
-        .limit(4),
-      supabase
-        .from("generations")
-        .select("cost_usd", { count: "exact" })
-        .eq("user_id", user.id)
-        .eq("status", "succeeded")
-        .gte("created_at", since.toISOString()),
-      supabase
-        .from("studio_runs")
-        .select("id, workflow_id, status, updated_at")
-        .eq("user_id", user.id)
-        .order("updated_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-    ]).then(([gensRes, projectsRes, monthRes, runRes]) => {
-      setGens((gensRes.data ?? []) as RecentGen[]);
-      setProjects((projectsRes.data ?? []) as RecentProject[]);
-      setMonthCost(
-        (monthRes.data ?? []).reduce(
+      const [gensRes, projectsRes, monthRes, runRes] = await Promise.all([
+        supabase
+          .from("generations")
+          .select("id, pipeline_type, status, thumbnail_url, final_render_url, created_at")
+          .eq("user_id", user!.id)
+          .order("created_at", { ascending: false })
+          .limit(6),
+        supabase
+          .from("projects")
+          .select("id, name, client_name")
+          .eq("user_id", user!.id)
+          .order("updated_at", { ascending: false })
+          .limit(4),
+        supabase
+          .from("generations")
+          .select("cost_usd", { count: "exact" })
+          .eq("user_id", user!.id)
+          .eq("status", "succeeded")
+          .gte("created_at", since.toISOString()),
+        supabase
+          .from("studio_runs")
+          .select("id, workflow_id, status, updated_at")
+          .eq("user_id", user!.id)
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ]);
+
+      // Erro deixa de ser engolido: antes qualquer falha virava zeros na tela,
+      // indistinguível de uma conta sem uso nenhum.
+      const failure = gensRes.error ?? projectsRes.error ?? monthRes.error ?? runRes.error;
+      if (failure) throw new Error(failure.message);
+
+      return {
+        gens: (gensRes.data ?? []) as RecentGen[],
+        projects: (projectsRes.data ?? []) as RecentProject[],
+        monthCost: (monthRes.data ?? []).reduce(
           (acc, r) => acc + Number((r as { cost_usd: number | null }).cost_usd ?? 0),
           0,
         ),
-      );
-      setMonthCount(monthRes.count ?? 0);
-      setLastRun((runRes.data as LastRun | null) ?? null);
-      setLoading(false);
-    });
-  }, [user]);
+        monthCount: monthRes.count ?? 0,
+        lastRun: (runRes.data as LastRun | null) ?? null,
+      };
+    },
+  });
+
+  const gens = data?.gens ?? [];
+  const projects = data?.projects ?? [];
+  const monthCost = data?.monthCost ?? null;
+  const monthCount = data?.monthCount ?? 0;
+  const lastRun = data?.lastRun ?? null;
+  const loading = isPending;
 
   const firstName = profile?.full_name?.split(" ")[0] ?? "arquiteto";
 
@@ -105,6 +114,16 @@ function DashboardPage() {
           Bem-vindo ao Arq3D Studio. Aqui está um resumo da sua conta.
         </p>
       </header>
+
+      {error && (
+        <div className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-5">
+          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" strokeWidth={1.75} />
+          <div>
+            <p className="text-sm font-bold text-foreground">Não foi possível carregar o resumo</p>
+            <p className="mt-1 text-sm font-light text-muted-foreground">{error.message}</p>
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid gap-4 md:grid-cols-3">
@@ -216,7 +235,7 @@ function DashboardPage() {
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-            {gens.map((g) => {
+            {gens.map((g: RecentGen) => {
               const thumb = g.thumbnail_url ?? g.final_render_url;
               return (
                 <Link
@@ -256,7 +275,7 @@ function DashboardPage() {
           </div>
         ) : (
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            {projects.map((p) => (
+            {projects.map((p: RecentProject) => (
               <Link
                 key={p.id}
                 to="/app/projetos/$projectId"

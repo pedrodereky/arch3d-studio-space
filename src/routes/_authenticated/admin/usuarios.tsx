@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Loader2, AlertCircle, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { qk } from "@/lib/query-keys";
 
 export const Route = createFileRoute("/_authenticated/admin/usuarios")({
   component: UsuariosPage,
@@ -29,16 +31,16 @@ const SORTS: { key: SortKey; label: string }[] = [
 ];
 
 function UsuariosPage() {
-  const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [roles, setRoles] = useState<RoleRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SortKey>("cost");
 
-  useEffect(() => {
-    let alive = true;
-    void (async () => {
+  const {
+    data,
+    isPending: loading,
+    error: queryError,
+  } = useQuery({
+    queryKey: qk.profilesList(),
+    queryFn: async () => {
       const [profRes, roleRes] = await Promise.all([
         supabase
           .from("profiles")
@@ -47,23 +49,19 @@ function UsuariosPage() {
           ),
         supabase.from("user_roles").select("user_id,role"),
       ]);
-      if (!alive) return;
-
-      // Erro visível em vez de uma tabela vazia que parece "nenhum usuário".
+      // Erro vira rejeição em vez de tabela vazia, que pareceria "nenhum usuário".
       const firstError = profRes.error ?? roleRes.error;
-      if (firstError) {
-        setError(firstError.message);
-        setLoading(false);
-        return;
-      }
-      setProfiles((profRes.data ?? []) as Profile[]);
-      setRoles((roleRes.data ?? []) as RoleRow[]);
-      setLoading(false);
-    })();
-    return () => {
-      alive = false;
-    };
-  }, []);
+      if (firstError) throw new Error(firstError.message);
+      return {
+        profiles: (profRes.data ?? []) as Profile[],
+        roles: (roleRes.data ?? []) as RoleRow[],
+      };
+    },
+  });
+
+  const error = queryError?.message ?? null;
+  const profiles = useMemo(() => data?.profiles ?? [], [data]);
+  const roles = useMemo(() => data?.roles ?? [], [data]);
 
   const adminIds = useMemo(
     () => new Set(roles.filter((r) => r.role === "admin").map((r) => r.user_id)),
