@@ -338,7 +338,8 @@ function BibliotecaPage() {
               </p>
             )}
             <p className="text-[11px] font-light text-muted-foreground">
-              Filtros e busca se aplicam às gerações já carregadas.
+              Filtros e busca se aplicam às gerações já carregadas — para procurar na conta inteira,
+              use a busca global (⌘K).
             </p>
           </div>
         )}

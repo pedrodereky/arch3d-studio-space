@@ -19,6 +19,8 @@ export const qk = {
   profilesList: () => ["profiles", "list"] as const,
 
   apiCosts: (days: number) => ["api-costs", days] as const,
+  pipelineCosts: (userId: string | undefined) => ["pipeline-costs", userId] as const,
+  studioNodeCost: (userId: string | undefined) => ["studio-node-cost", userId] as const,
   userRoles: () => ["user-roles"] as const,
 
   instanceConfig: () => ["instance-config"] as const,
@@ -28,4 +30,7 @@ export const qk = {
   studioRuns: (userId: string | undefined) => ["studio-runs", userId] as const,
 
   sharedProject: (token: string) => ["shared-project", token] as const,
+
+  globalSearch: (userId: string | undefined, term: string) =>
+    ["global-search", userId, term] as const,
 } as const;
