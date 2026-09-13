@@ -82,7 +82,9 @@ function tryBrowserNotify(title: string, body: string, onClick?: () => void) {
   if (Notification.permission !== "granted") return;
   if (document.visibilityState === "visible") return;
   try {
-    const n = new Notification(title, { body, icon: "/favicon.ico" });
+    // Apontava para /favicon.ico, que não existia — toda notificação saía com
+    // o ícone quebrado. A Notification API quer raster; 192 é o tamanho padrão.
+    const n = new Notification(title, { body, icon: "/icon-192.png" });
     if (onClick) {
       n.onclick = () => {
         window.focus();
