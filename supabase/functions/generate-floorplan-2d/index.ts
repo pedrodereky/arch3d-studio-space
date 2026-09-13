@@ -1,11 +1,13 @@
 // Pipeline B: briefing → planta baixa 2D via floor-plan-lora.
-// Síncrona, ~30-60s para 4 plantas em paralelo.
+// Assíncrona: responde 202 na hora e processa em background (~30-60s para 4
+// plantas em paralelo). O cliente acompanha pelo status da generation.
 //
 // POST {
 //   briefing: BriefingInput,
 //   projectId?: string
 // }
-// → { generationId, assets: [{ id, url, seed, path }] }
+// → 202 { ok: true, accepted: true, generationId }
+//   As plantas saem em generations.metadata.assets quando status vira succeeded.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { runFloorplanLora, downloadAsBytes } from "../_shared/replicate-floorplan.ts";
@@ -101,50 +103,26 @@ function validateBriefing(b: unknown): BriefingInput {
   };
 }
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
-
-  let generationId: string | null = null;
-  let userId: string | null = null;
-
+/**
+ * Trabalho pesado do pipeline: N plantas em paralelo no Replicate, upload,
+ * assets e custo. Roda fora do ciclo da resposta via EdgeRuntime.waitUntil —
+ * antes era feito antes de responder, e uma geração que passasse do teto de
+ * tempo da edge function devolvia erro opaco com o trabalho perdido.
+ */
+async function processFloorplan(params: {
+  generationId: string;
+  userId: string;
+  briefing: BriefingInput;
+  prompt: string;
+  negativePrompt: string;
+  projectId?: string;
+}) {
+  const { generationId, userId, briefing, prompt, negativePrompt, projectId } = params;
   try {
-    userId = await getUserId(req);
-    const body = (await req.json()) as { briefing?: unknown; projectId?: string };
-    const briefing = validateBriefing(body.briefing);
-
-    // rate limit: máx 5 em processing
-    const { count: inProgress } = await admin
-      .from("generations")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", userId)
-      .eq("pipeline_type", "floorplan_2d")
-      .in("status", ["queued", "processing"]);
-    if ((inProgress ?? 0) >= 5) {
-      throw new Error("muitas gerações em andamento, aguarde algumas finalizarem");
-    }
-
-    const { prompt, negativePrompt } = composeFloorplanPrompt(briefing);
-
-    const { data: gen, error: insErr } = await admin
-      .from("generations")
-      .insert({
-        user_id: userId,
-        pipeline_type: "floorplan_2d",
-        engine: "floor_plan_lora",
-        status: "processing",
-        source_images: [],
-        prompt,
-        metadata: { briefing, negative_prompt: negativePrompt, analyses: {} },
-      } as never)
-      .select("id")
-      .single();
-    if (insErr || !gen) throw insErr ?? new Error("falha ao criar generation");
-    generationId = gen.id as string;
-
     const logger = createLogger({
       admin,
-      generationId: generationId!,
-      userId: userId!,
+      generationId,
+      userId,
       enabled: true,
     });
     logger.info("floorplan_2d", "started", { briefing });
@@ -239,11 +217,11 @@ Deno.serve(async (req) => {
       })),
     );
 
-    if (body.projectId) {
+    if (projectId) {
       const { data: proj } = await admin
         .from("projects")
         .select("id")
-        .eq("id", body.projectId)
+        .eq("id", projectId)
         .eq("user_id", userId)
         .maybeSingle();
       if (proj) {
@@ -252,15 +230,77 @@ Deno.serve(async (req) => {
           .insert({ project_id: proj.id, generation_id: generationId } as never);
       }
     }
+  } catch (e) {
+    const msg = (e as Error).message ?? "falha desconhecida";
+    console.error("generate-floorplan-2d processamento", generationId, msg);
+    await admin
+      .from("generations")
+      .update({
+        status: "failed",
+        error_message: msg,
+        completed_at: new Date().toISOString(),
+      } as never)
+      .eq("id", generationId);
+  }
+}
 
-    return new Response(
-      JSON.stringify({
-        ok: true,
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  let generationId: string | null = null;
+  let userId: string | null = null;
+
+  try {
+    userId = await getUserId(req);
+    const body = (await req.json()) as { briefing?: unknown; projectId?: string };
+    const briefing = validateBriefing(body.briefing);
+
+    // rate limit: máx 5 em processing
+    const { count: inProgress } = await admin
+      .from("generations")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("pipeline_type", "floorplan_2d")
+      .in("status", ["queued", "processing"]);
+    if ((inProgress ?? 0) >= 5) {
+      throw new Error("muitas gerações em andamento, aguarde algumas finalizarem");
+    }
+
+    const { prompt, negativePrompt } = composeFloorplanPrompt(briefing);
+
+    const { data: gen, error: insErr } = await admin
+      .from("generations")
+      .insert({
+        user_id: userId,
+        pipeline_type: "floorplan_2d",
+        engine: "floor_plan_lora",
+        status: "processing",
+        source_images: [],
+        prompt,
+        metadata: { briefing, negative_prompt: negativePrompt, analyses: {} },
+      } as never)
+      .select("id")
+      .single();
+    if (insErr || !gen) throw insErr ?? new Error("falha ao criar generation");
+    generationId = gen.id as string;
+
+    // Despacha e responde na hora; o cliente acompanha por polling.
+    // @ts-ignore EdgeRuntime é global nas Edge Functions do Supabase
+    EdgeRuntime.waitUntil(
+      processFloorplan({
         generationId,
-        assets: assets.map((a) => ({ id: a.id, url: a.url, seed: a.seed })),
+        userId,
+        briefing,
+        prompt,
+        negativePrompt,
+        projectId: body.projectId,
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
+
+    return new Response(JSON.stringify({ ok: true, accepted: true, generationId }), {
+      status: 202,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (e) {
     const msg = (e as Error).message ?? "falha desconhecida";
     console.error("generate-floorplan-2d erro", msg);

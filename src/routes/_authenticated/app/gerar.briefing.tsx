@@ -12,6 +12,7 @@ import {
   type FloorplanAsset,
   type FloorplanAnalysis,
 } from "@/features/briefing/types";
+import { pollGenerationStatus } from "@/lib/poll-generation";
 
 export const Route = createFileRoute("/_authenticated/app/gerar/briefing")({
   component: BriefingPage,
@@ -47,19 +48,25 @@ function BriefingPage() {
       if (error) {
         throw new Error((error as { message?: string }).message ?? "Falha na geração");
       }
-      const body = data as {
-        ok?: boolean;
-        error?: string;
-        generationId?: string;
-        assets?: FloorplanAsset[];
-      };
-      if (!body?.ok || !body.assets?.length) {
-        throw new Error(body?.error ?? "Resposta inválida");
+      const ack = data as { ok?: boolean; error?: string; generationId?: string };
+      if (!ack?.ok || !ack.generationId) {
+        throw new Error(ack?.error ?? "Resposta inválida");
       }
-      setAssets(body.assets);
+
+      // A função responde 202 e processa em background; o resultado sai em
+      // generations.metadata.assets quando o status vira succeeded.
+      const outcome = await pollGenerationStatus(ack.generationId);
+      if (!outcome) return;
+      if (!outcome.ok) throw new Error(outcome.error);
+
+      const generated = (outcome.metadata.assets as FloorplanAsset[] | undefined) ?? [];
+      if (generated.length === 0) {
+        throw new Error("nenhuma planta foi gerada");
+      }
+      setAssets(generated);
       setPhase("results");
       toast.success("Plantas geradas", {
-        description: `${body.assets.length} propostas prontas.`,
+        description: `${generated.length} propostas prontas.`,
       });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Falha desconhecida";
