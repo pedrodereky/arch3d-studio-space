@@ -3,8 +3,7 @@
 
 import type { Furniture } from "./floorplan-extract.ts";
 
-const HUNYUAN_URL =
-  "https://api.replicate.com/v1/models/tencent/hunyuan-3d-3.1/predictions";
+const HUNYUAN_URL = "https://api.replicate.com/v1/models/tencent/hunyuan-3d-3.1/predictions";
 
 const MAX_CONCURRENCY = 2;
 const MAX_RETRIES = 4;
@@ -39,10 +38,7 @@ async function pollPrediction(
   throw new Error("prediction timeout");
 }
 
-async function generateOneMesh(
-  token: string,
-  prompt: string,
-): Promise<Uint8Array> {
+async function generateOneMesh(token: string, prompt: string): Promise<Uint8Array> {
   let lastErr: Error | null = null;
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
@@ -77,11 +73,7 @@ async function generateOneMesh(
       if (pred.status === "succeeded") {
         const out = pred.output;
         glbUrl =
-          typeof out === "string"
-            ? out
-            : Array.isArray(out)
-              ? out[out.length - 1]
-              : out?.mesh;
+          typeof out === "string" ? out : Array.isArray(out) ? out[out.length - 1] : out?.mesh;
       } else {
         const url = pred.urls?.get;
         if (!url) throw new Error(`prediction sem url de get`);
@@ -130,9 +122,7 @@ export async function generateFurnitureMeshes(
       const idx = cursor++;
       if (idx >= items.length) return;
       const f = items[idx];
-      const prompt =
-        (f as Furniture & { prompt?: string }).prompt ??
-        defaultPromptFor(f);
+      const prompt = (f as Furniture & { prompt?: string }).prompt ?? defaultPromptFor(f);
       try {
         results[idx].bytes = await generateOneMesh(token, prompt);
       } catch (e) {
@@ -143,10 +133,7 @@ export async function generateFurnitureMeshes(
       onProgress?.(done, items.length);
     }
   }
-  const workers = Array.from(
-    { length: Math.min(MAX_CONCURRENCY, items.length) },
-    () => worker(),
-  );
+  const workers = Array.from({ length: Math.min(MAX_CONCURRENCY, items.length) }, () => worker());
   await Promise.all(workers);
   return results;
 }

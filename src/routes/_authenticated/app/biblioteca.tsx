@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Library as LibraryIcon,
   Loader2,
@@ -20,14 +21,10 @@ import {
 } from "lucide-react";
 import { GerarVideoDialog } from "@/components/biblioteca/GerarVideoDialog";
 import { supabase } from "@/integrations/supabase/client";
+import { qk } from "@/lib/query-keys";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,6 +35,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ModelViewer } from "@/components/library/ModelViewer";
 import { FreshImg, FreshVideo, FreshLink } from "@/components/library/FreshMedia";
+import { pipelineLabel } from "@/lib/pipeline-labels";
 
 type BibliotecaSearch = { destacar?: string };
 
@@ -73,18 +71,10 @@ type GenRow = {
 
 type Filter = "all" | "succeeded" | "processing" | "failed";
 
-const PIPELINE_LABEL: Record<string, string> = {
-  direct: "Direto",
-  enriched: "Enriquecido",
-  edit: "Edita antes",
-  in_scene: "Ver no projeto",
-  text_to_3d: "Texto para 3D",
-  floorplan: "Planta para 3D (descontinuado)",
-  scene_to_3d: "Cena para 3D (descontinuado)",
-  floorplan_render: "Planta → Render 3D",
-  render_to_video: "Render → Vídeo POV",
-  redecorate: "Redecoração",
-};
+const PAGE_SIZE = 60;
+
+const SELECT_COLUMNS =
+  "id,status,pipeline_type,thumbnail_url,final_render_url,video_url,intermediate_images,glb_url,obj_url,fbx_url,source_images,prompt,error_message,is_public,created_at,completed_at,cost_usd,metadata";
 
 type Variation = { url: string; path?: string; seed?: number };
 
@@ -92,7 +82,9 @@ function readVariations(meta: unknown): Variation[] {
   if (!meta || typeof meta !== "object") return [];
   const v = (meta as { variations?: unknown }).variations;
   if (!Array.isArray(v)) return [];
-  return v.filter((x): x is Variation => !!x && typeof x === "object" && typeof (x as Variation).url === "string");
+  return v.filter(
+    (x): x is Variation => !!x && typeof x === "object" && typeof (x as Variation).url === "string",
+  );
 }
 
 type CardItem = {
@@ -106,33 +98,46 @@ function BibliotecaPage() {
   const { destacar } = Route.useSearch();
   const navigate = useNavigate();
 
-  const [items, setItems] = useState<GenRow[] | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
   const [openVariant, setOpenVariant] = useState<number | null>(null);
+  const queryClient = useQueryClient();
+
+  const listKey = useMemo(
+    () => qk.generationsList({ view: "biblioteca", userId: user?.id }),
+    [user?.id],
+  );
+
+  const { data, error, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
+    queryKey: listKey,
+    enabled: !!user,
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }) => {
+      const from = (pageParam as number) * PAGE_SIZE;
+      const { data: rows, error: queryError } = await supabase
+        .from("generations")
+        .select(SELECT_COLUMNS)
+        .order("created_at", { ascending: false })
+        .range(from, from + PAGE_SIZE - 1);
+      if (queryError) throw new Error(queryError.message);
+      return (rows ?? []) as GenRow[];
+    },
+    // Página curta significa fim da lista.
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.length === PAGE_SIZE ? allPages.length : undefined,
+  });
+
+  const items = useMemo(() => (data ? data.pages.flat() : null), [data]);
+  const hasMore = !!hasNextPage;
+  const loadingMore = isFetchingNextPage;
 
   useEffect(() => {
-    if (!user) return;
-    void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+    if (error) toast.error("Erro ao carregar biblioteca", { description: error.message });
+  }, [error]);
 
-  async function load() {
-    const { data, error } = await supabase
-      .from("generations")
-      .select(
-        "id,status,pipeline_type,thumbnail_url,final_render_url,video_url,intermediate_images,glb_url,obj_url,fbx_url,source_images,prompt,error_message,is_public,created_at,completed_at,cost_usd,metadata",
-      )
-      .order("created_at", { ascending: false })
-      .limit(200);
-    if (error) {
-      toast.error("Erro ao carregar biblioteca", { description: error.message });
-      setItems([]);
-      return;
-    }
-    setItems((data ?? []) as GenRow[]);
-  }
+  /** Revalida as páginas já carregadas — react-query refaz cada uma. */
+  const reload = () => queryClient.invalidateQueries({ queryKey: listKey });
 
   useEffect(() => {
     if (!user) return;
@@ -141,15 +146,49 @@ function BibliotecaPage() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "generations", filter: `user_id=eq.${user.id}` },
-        () => {
-          void load();
+        (payload) => {
+          // Aplica a linha direto no cache. Rebuscar a lista inteira a cada
+          // evento virava uma query por evento durante um lote de gerações.
+          type Infinite = { pages: GenRow[][]; pageParams: unknown[] };
+
+          if (payload.eventType === "DELETE") {
+            const gone = payload.old as { id?: string };
+            if (!gone?.id) return;
+            queryClient.setQueryData(listKey, (prev: Infinite | undefined) =>
+              prev
+                ? {
+                    ...prev,
+                    pages: prev.pages.map((page) => page.filter((it) => it.id !== gone.id)),
+                  }
+                : prev,
+            );
+            return;
+          }
+
+          const row = payload.new as GenRow;
+          if (!row?.id) return;
+          queryClient.setQueryData(listKey, (prev: Infinite | undefined) => {
+            if (!prev) return prev;
+            const known = prev.pages.some((page) => page.some((it) => it.id === row.id));
+            if (known) {
+              return {
+                ...prev,
+                pages: prev.pages.map((page) =>
+                  page.map((it) => (it.id === row.id ? { ...it, ...row } : it)),
+                ),
+              };
+            }
+            // Linha nova entra no topo da primeira página.
+            const [first = [], ...rest] = prev.pages;
+            return { ...prev, pages: [[row, ...first], ...rest] };
+          });
         },
       )
       .subscribe();
     return () => {
       void supabase.removeChannel(ch);
     };
-  }, [user]);
+  }, [user, queryClient, listKey]);
 
   const destacarRef = useRef<string | null>(null);
   useEffect(() => {
@@ -167,12 +206,13 @@ function BibliotecaPage() {
     const rows = items.filter((it) => {
       if (filter === "succeeded" && it.status !== "succeeded") return false;
       if (filter === "failed" && it.status !== "failed" && it.status !== "cancelled") return false;
-      if (filter === "processing" && it.status !== "queued" && it.status !== "processing") return false;
+      if (filter === "processing" && it.status !== "queued" && it.status !== "processing")
+        return false;
       if (query.trim()) {
         const q = query.toLowerCase();
         if (
           !(it.prompt ?? "").toLowerCase().includes(q) &&
-          !(PIPELINE_LABEL[it.pipeline_type] ?? "").toLowerCase().includes(q)
+          !pipelineLabel(it.pipeline_type).toLowerCase().includes(q)
         )
           return false;
       }
@@ -208,9 +248,7 @@ function BibliotecaPage() {
           <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
             Biblioteca
           </p>
-          <h1 className="mt-2 text-4xl font-black tracking-tight text-foreground">
-            Suas gerações
-          </h1>
+          <h1 className="mt-2 text-4xl font-black tracking-tight text-foreground">Suas gerações</h1>
           <p className="mt-3 max-w-xl font-light text-muted-foreground">
             Tudo que você gerou aparece aqui. Baixe, torne público ou adicione a um projeto.
           </p>
@@ -288,6 +326,29 @@ function BibliotecaPage() {
             ))}
           </div>
         )}
+
+        {items && items.length > 0 && (
+          <div className="mt-8 flex flex-col items-center gap-2">
+            {hasMore ? (
+              <button
+                type="button"
+                onClick={() => void fetchNextPage()}
+                disabled={loadingMore}
+                className="inline-flex h-11 items-center gap-2 rounded-full border border-border bg-card px-6 text-[11px] font-black uppercase tracking-[0.12em] text-foreground transition-colors hover:border-accent disabled:opacity-50"
+              >
+                {loadingMore && <Loader2 className="h-4 w-4 animate-spin" />}
+                Carregar mais
+              </button>
+            ) : (
+              <p className="text-xs font-light text-muted-foreground">
+                Fim da biblioteca — {items.length} {items.length === 1 ? "geração" : "gerações"}.
+              </p>
+            )}
+            <p className="text-[11px] font-light text-muted-foreground">
+              Filtros e busca se aplicam às gerações já carregadas.
+            </p>
+          </div>
+        )}
       </div>
 
       <Sheet
@@ -306,7 +367,7 @@ function BibliotecaPage() {
               gen={openItem}
               selectedVariant={openVariant}
               onSelectVariant={setOpenVariant}
-              onChange={() => void load()}
+              onChange={() => void reload()}
               onClose={() => {
                 setOpenId(null);
                 setOpenVariant(null);
@@ -358,54 +419,54 @@ function Card({
             : "border-border/60 hover:border-accent/40 hover:shadow-md")
         }
       >
-      <div className="relative aspect-square w-full overflow-hidden bg-muted">
-        {thumb ? (
-          <FreshImg
-            src={thumb}
-            alt=""
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-          />
-        ) : gen.status === "succeeded" && gen.glb_url ? (
-          <div className="pointer-events-none h-full w-full">
-            <ModelViewer src={gen.glb_url} alt={gen.prompt ?? "Modelo 3D"} compact />
+        <div className="relative aspect-square w-full overflow-hidden bg-muted">
+          {thumb ? (
+            <FreshImg
+              src={thumb}
+              alt=""
+              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            />
+          ) : gen.status === "succeeded" && gen.glb_url ? (
+            <div className="pointer-events-none h-full w-full">
+              <ModelViewer src={gen.glb_url} alt={gen.prompt ?? "Modelo 3D"} compact />
+            </div>
+          ) : (
+            <div className="flex h-full w-full items-center justify-center">
+              <LibraryIcon className="h-10 w-10 text-muted-foreground/40" strokeWidth={1.25} />
+            </div>
+          )}
+          <div className="absolute left-3 top-3">
+            <StatusPill status={gen.status} />
           </div>
-        ) : (
-          <div className="flex h-full w-full items-center justify-center">
-            <LibraryIcon className="h-10 w-10 text-muted-foreground/40" strokeWidth={1.25} />
-          </div>
-        )}
-        <div className="absolute left-3 top-3">
-          <StatusPill status={gen.status} />
+          {gen.is_public && (
+            <div className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-[4px] bg-primary/90 px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-primary-foreground">
+              <Globe className="h-3 w-3" />
+              Público
+            </div>
+          )}
+          {hasStack && (
+            <div className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-[4px] bg-foreground/85 px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-background">
+              {variantTotal} variações
+            </div>
+          )}
+          {gen.video_url && (
+            <div className="absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-[4px] bg-foreground/85 px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-background">
+              <Video className="h-3 w-3" />
+              Vídeo
+            </div>
+          )}
         </div>
-        {gen.is_public && (
-          <div className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-[4px] bg-primary/90 px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-primary-foreground">
-            <Globe className="h-3 w-3" />
-            Público
-          </div>
-        )}
-        {hasStack && (
-          <div className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-[4px] bg-foreground/85 px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-background">
-            {variantTotal} variações
-          </div>
-        )}
-        {gen.video_url && (
-          <div className="absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-[4px] bg-foreground/85 px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-background">
-            <Video className="h-3 w-3" />
-            Vídeo
-          </div>
-        )}
-      </div>
-      <div className="flex flex-col gap-1 p-4">
-        <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-          {PIPELINE_LABEL[gen.pipeline_type] ?? gen.pipeline_type}
-        </p>
-        <p className="line-clamp-2 text-sm font-light text-foreground">
-          {gen.prompt?.trim() || "Sem descrição"}
-        </p>
-        <p className="mt-1 text-[11px] font-light text-muted-foreground">
-          {formatDate(gen.created_at)}
-        </p>
-      </div>
+        <div className="flex flex-col gap-1 p-4">
+          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+            {pipelineLabel(gen.pipeline_type)}
+          </p>
+          <p className="line-clamp-2 text-sm font-light text-foreground">
+            {gen.prompt?.trim() || "Sem descrição"}
+          </p>
+          <p className="mt-1 text-[11px] font-light text-muted-foreground">
+            {formatDate(gen.created_at)}
+          </p>
+        </div>
       </button>
     </div>
   );
@@ -413,11 +474,26 @@ function Card({
 
 function StatusPill({ status }: { status: GenStatus }) {
   const map = {
-    succeeded: { label: "Pronto", icon: CheckCircle2, cls: "bg-emerald-600/90 text-white", spin: false },
+    succeeded: {
+      label: "Pronto",
+      icon: CheckCircle2,
+      cls: "bg-emerald-600/90 text-white",
+      spin: false,
+    },
     queued: { label: "Em fila", icon: Clock, cls: "bg-amber-500/90 text-white", spin: false },
-    processing: { label: "Processando", icon: Loader2, cls: "bg-accent/90 text-accent-foreground", spin: true },
+    processing: {
+      label: "Processando",
+      icon: Loader2,
+      cls: "bg-accent/90 text-accent-foreground",
+      spin: true,
+    },
     failed: { label: "Falhou", icon: AlertTriangle, cls: "bg-red-600/90 text-white", spin: false },
-    cancelled: { label: "Cancelado", icon: X, cls: "bg-muted-foreground/80 text-white", spin: false },
+    cancelled: {
+      label: "Cancelado",
+      icon: X,
+      cls: "bg-muted-foreground/80 text-white",
+      spin: false,
+    },
   } as const;
   const m = map[status];
   const Icon = m.icon;
@@ -455,14 +531,14 @@ function DetailPanel({
     variations.length > 0 && selectedVariant !== null && selectedVariant < variations.length
       ? variations[selectedVariant]
       : null;
-  const thumb =
-    activeVariant?.url ?? gen.thumbnail_url ?? firstSource(gen.source_images);
+  const thumb = activeVariant?.url ?? gen.thumbnail_url ?? firstSource(gen.source_images);
   const renderUrl =
-    activeVariant?.url ?? gen.final_render_url ?? gen.thumbnail_url ?? firstSource(gen.source_images);
+    activeVariant?.url ??
+    gen.final_render_url ??
+    gen.thumbnail_url ??
+    firstSource(gen.source_images);
   const canMakeVideo =
-    gen.status === "succeeded" &&
-    gen.pipeline_type === "floorplan_render" &&
-    !!renderUrl;
+    gen.status === "succeeded" && gen.pipeline_type === "floorplan_render" && !!renderUrl;
 
   function regenerate() {
     onClose();
@@ -500,7 +576,7 @@ function DetailPanel({
     <div className="flex flex-col gap-6">
       <SheetHeader>
         <SheetTitle className="text-2xl font-black tracking-tight">
-          {PIPELINE_LABEL[gen.pipeline_type] ?? gen.pipeline_type}
+          {pipelineLabel(gen.pipeline_type)}
           {activeVariant && (
             <span className="ml-2 text-sm font-light text-muted-foreground">
               · Variação {(selectedVariant ?? 0) + 1}/{variations.length}
@@ -517,7 +593,11 @@ function DetailPanel({
           className="aspect-video w-full overflow-hidden rounded-2xl border border-border bg-black"
         />
       ) : gen.status === "succeeded" && gen.glb_url ? (
-        <ModelViewer src={gen.glb_url} poster={thumb ?? undefined} alt={gen.prompt ?? "Modelo 3D"} />
+        <ModelViewer
+          src={gen.glb_url}
+          poster={thumb ?? undefined}
+          alt={gen.prompt ?? "Modelo 3D"}
+        />
       ) : (
         <div className="overflow-hidden rounded-2xl border border-border bg-muted">
           {thumb ? (
@@ -689,7 +769,9 @@ function VariationsPanel({
     if (!v) return;
     setBusy(true);
     const remaining = variations.filter((_, idx) => idx !== i);
-    const originalMeta = (gen.metadata && typeof gen.metadata === "object" ? gen.metadata : {}) as Record<string, unknown>;
+    const originalMeta = (
+      gen.metadata && typeof gen.metadata === "object" ? gen.metadata : {}
+    ) as Record<string, unknown>;
     const { data: created, error: insErr } = await supabase
       .from("generations")
       .insert({
@@ -742,7 +824,9 @@ function VariationsPanel({
               onClick={() => onSelectVariant(active ? null : i)}
               className={
                 "group relative aspect-square overflow-hidden rounded-lg border transition-all " +
-                (active ? "border-accent ring-2 ring-accent/40" : "border-border/60 hover:border-accent/40")
+                (active
+                  ? "border-accent ring-2 ring-accent/40"
+                  : "border-border/60 hover:border-accent/40")
               }
             >
               <FreshImg src={v.url} alt="" className="h-full w-full object-cover" />
@@ -799,11 +883,12 @@ function CandidatesPanel({
   onChange: () => void;
   disabled: boolean;
 }) {
+  // Hooks antes de qualquer early return: a contagem de candidatos muda entre
+  // renders (realtime) e um return antecipado acima do useState quebraria a
+  // ordem dos hooks.
+  const [busyVariant, setBusyVariant] = useState<string | null>(null);
   const meta = (gen.metadata ?? {}) as { candidates?: CandidateMeta[] };
   const candidates = Array.isArray(meta.candidates) ? meta.candidates : [];
-  if (candidates.length < 2) return null;
-
-  const [busyVariant, setBusyVariant] = useState<string | null>(null);
   const primaryUrl = gen.final_render_url ?? gen.thumbnail_url;
 
   async function setAsPrimary(c: CandidateMeta) {
@@ -825,6 +910,8 @@ function CandidatesPanel({
       onChange();
     }
   }
+
+  if (candidates.length < 2) return null;
 
   return (
     <Section label={`Candidatos (${candidates.length})`}>
@@ -1110,7 +1197,9 @@ function FilterChip({
       <span
         className={
           "rounded-[4px] px-1.5 py-0.5 text-[9px] font-bold " +
-          (active ? "bg-accent-foreground/15 text-accent-foreground" : "bg-muted text-muted-foreground")
+          (active
+            ? "bg-accent-foreground/15 text-accent-foreground"
+            : "bg-muted text-muted-foreground")
         }
       >
         {count}

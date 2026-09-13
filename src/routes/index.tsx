@@ -19,7 +19,7 @@ function LandingPage() {
         <Hero />
         <PipelinesSection />
         <DiferenciaisSection />
-        
+
         <FaqSection />
       </main>
       <LandingFooter />

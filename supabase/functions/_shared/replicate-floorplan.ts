@@ -10,8 +10,7 @@
 const REPLICATE_BASE = "https://api.replicate.com/v1";
 
 // LoRA dedicado a plantas baixas (version pin obrigatório).
-const FLOORPLAN_VERSION =
-  "bd06041a2dfb3abf159bc407ba8872a5f968c94c5917844f23887e512b4e9c42";
+const FLOORPLAN_VERSION = "bd06041a2dfb3abf159bc407ba8872a5f968c94c5917844f23887e512b4e9c42";
 
 const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const VISION_MODEL = "google/gemini-2.5-flash";
@@ -153,10 +152,7 @@ export type FloorplanLoraParams = {
   loraScale?: number;
 };
 
-export async function runFloorplanLora(
-  token: string,
-  p: FloorplanLoraParams,
-): Promise<string> {
+export async function runFloorplanLora(token: string, p: FloorplanLoraParams): Promise<string> {
   const input: Record<string, unknown> = {
     prompt: p.prompt,
     negative_prompt:
@@ -293,8 +289,7 @@ export async function runFloorplanVision(
     throw new Error(`vision ${r.status}: ${t}`);
   }
   const json = await r.json();
-  const argsStr =
-    json?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
+  const argsStr = json?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
   if (!argsStr) throw new Error("vision: sem tool_call");
   const parsed = JSON.parse(argsStr) as Record<string, unknown>;
 
@@ -309,25 +304,17 @@ export async function runFloorplanVision(
   return {
     rooms,
     totalAreaApprox:
-      typeof parsed.total_area_m2 === "number"
-        ? (parsed.total_area_m2 as number)
-        : undefined,
-    bedrooms:
-      typeof parsed.bedrooms === "number" ? (parsed.bedrooms as number) : undefined,
-    suites:
-      typeof parsed.suites === "number" ? (parsed.suites as number) : undefined,
-    bathrooms:
-      typeof parsed.bathrooms === "number" ? (parsed.bathrooms as number) : undefined,
-    garages:
-      typeof parsed.garages === "number" ? (parsed.garages as number) : undefined,
+      typeof parsed.total_area_m2 === "number" ? (parsed.total_area_m2 as number) : undefined,
+    bedrooms: typeof parsed.bedrooms === "number" ? (parsed.bedrooms as number) : undefined,
+    suites: typeof parsed.suites === "number" ? (parsed.suites as number) : undefined,
+    bathrooms: typeof parsed.bathrooms === "number" ? (parsed.bathrooms as number) : undefined,
+    garages: typeof parsed.garages === "number" ? (parsed.garages as number) : undefined,
     accessibility: parsed.accessibility as FloorplanVisionResult["accessibility"],
     raw: parsed,
   };
 }
 
-export async function downloadAsBytes(
-  url: string,
-): Promise<{ bytes: Uint8Array; mime: string }> {
+export async function downloadAsBytes(url: string): Promise<{ bytes: Uint8Array; mime: string }> {
   const r = await fetch(url);
   if (!r.ok) throw new Error(`download ${url}: ${r.status}`);
   return {

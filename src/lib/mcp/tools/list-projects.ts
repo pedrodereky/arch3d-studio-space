@@ -5,8 +5,7 @@ import { supabaseForUser } from "../supabase";
 export default defineTool({
   name: "list_projects",
   title: "Listar projetos",
-  description:
-    "Lista os projetos do usuário autenticado (nome, cliente, prazo, briefing).",
+  description: "Lista os projetos do usuário autenticado (nome, cliente, prazo, briefing).",
   inputSchema: {
     limit: z.number().int().optional().describe("Máximo de projetos (padrão 20)."),
     search: z.string().optional().describe("Filtra pelo nome do projeto."),
@@ -23,8 +22,7 @@ export default defineTool({
       .limit(Math.min(Math.max(limit ?? 20, 1), 100));
     if (search?.trim()) query = query.ilike("name", `%${search.trim()}%`);
     const { data, error } = await query;
-    if (error)
-      return { content: [{ type: "text", text: error.message }], isError: true };
+    if (error) return { content: [{ type: "text", text: error.message }], isError: true };
     return {
       content: [{ type: "text", text: JSON.stringify(data ?? []) }],
       structuredContent: { projects: data ?? [] },

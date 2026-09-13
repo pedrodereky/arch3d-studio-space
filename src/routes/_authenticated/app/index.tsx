@@ -1,6 +1,16 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { Sparkles, FolderOpen, Library, Map, ArrowRight, Loader2, Workflow, Wand2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import {
+  Sparkles,
+  FolderOpen,
+  Library,
+  Map,
+  ArrowRight,
+  Loader2,
+  Workflow,
+  Wand2,
+  AlertCircle,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { FreshImg } from "@/components/library/FreshMedia";
@@ -33,58 +43,66 @@ type LastRun = {
 
 function DashboardPage() {
   const { user, profile } = useAuth();
-  const [gens, setGens] = useState<RecentGen[]>([]);
-  const [projects, setProjects] = useState<RecentProject[]>([]);
-  const [monthCost, setMonthCost] = useState<number | null>(null);
-  const [monthCount, setMonthCount] = useState(0);
-  const [lastRun, setLastRun] = useState<LastRun | null>(null);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!user) return;
-    const since = new Date();
-    since.setDate(since.getDate() - 30);
+  const { data, isPending, error } = useQuery({
+    queryKey: ["dashboard", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const since = new Date();
+      since.setDate(since.getDate() - 30);
 
-    void Promise.all([
-      supabase
-        .from("generations")
-        .select("id, pipeline_type, status, thumbnail_url, final_render_url, created_at")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(6),
-      supabase
-        .from("projects")
-        .select("id, name, client_name")
-        .eq("user_id", user.id)
-        .order("updated_at", { ascending: false })
-        .limit(4),
-      supabase
-        .from("generations")
-        .select("cost_usd", { count: "exact" })
-        .eq("user_id", user.id)
-        .eq("status", "succeeded")
-        .gte("created_at", since.toISOString()),
-      supabase
-        .from("studio_runs")
-        .select("id, workflow_id, status, updated_at")
-        .eq("user_id", user.id)
-        .order("updated_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-    ]).then(([gensRes, projectsRes, monthRes, runRes]) => {
-      setGens((gensRes.data ?? []) as RecentGen[]);
-      setProjects((projectsRes.data ?? []) as RecentProject[]);
-      setMonthCost(
-        (monthRes.data ?? []).reduce(
+      const [gensRes, projectsRes, monthRes, runRes] = await Promise.all([
+        supabase
+          .from("generations")
+          .select("id, pipeline_type, status, thumbnail_url, final_render_url, created_at")
+          .eq("user_id", user!.id)
+          .order("created_at", { ascending: false })
+          .limit(6),
+        supabase
+          .from("projects")
+          .select("id, name, client_name")
+          .eq("user_id", user!.id)
+          .order("updated_at", { ascending: false })
+          .limit(4),
+        supabase
+          .from("generations")
+          .select("cost_usd", { count: "exact" })
+          .eq("user_id", user!.id)
+          .eq("status", "succeeded")
+          .gte("created_at", since.toISOString()),
+        supabase
+          .from("studio_runs")
+          .select("id, workflow_id, status, updated_at")
+          .eq("user_id", user!.id)
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ]);
+
+      // Erro deixa de ser engolido: antes qualquer falha virava zeros na tela,
+      // indistinguível de uma conta sem uso nenhum.
+      const failure = gensRes.error ?? projectsRes.error ?? monthRes.error ?? runRes.error;
+      if (failure) throw new Error(failure.message);
+
+      return {
+        gens: (gensRes.data ?? []) as RecentGen[],
+        projects: (projectsRes.data ?? []) as RecentProject[],
+        monthCost: (monthRes.data ?? []).reduce(
           (acc, r) => acc + Number((r as { cost_usd: number | null }).cost_usd ?? 0),
           0,
         ),
-      );
-      setMonthCount(monthRes.count ?? 0);
-      setLastRun((runRes.data as LastRun | null) ?? null);
-      setLoading(false);
-    });
-  }, [user]);
+        monthCount: monthRes.count ?? 0,
+        lastRun: (runRes.data as LastRun | null) ?? null,
+      };
+    },
+  });
+
+  const gens = data?.gens ?? [];
+  const projects = data?.projects ?? [];
+  const monthCost = data?.monthCost ?? null;
+  const monthCount = data?.monthCount ?? 0;
+  const lastRun = data?.lastRun ?? null;
+  const loading = isPending;
 
   const firstName = profile?.full_name?.split(" ")[0] ?? "arquiteto";
 
@@ -96,6 +114,16 @@ function DashboardPage() {
           Bem-vindo ao Arq3D Studio. Aqui está um resumo da sua conta.
         </p>
       </header>
+
+      {error && (
+        <div className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-5">
+          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" strokeWidth={1.75} />
+          <div>
+            <p className="text-sm font-bold text-foreground">Não foi possível carregar o resumo</p>
+            <p className="mt-1 text-sm font-light text-muted-foreground">{error.message}</p>
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid gap-4 md:grid-cols-3">
@@ -133,10 +161,31 @@ function DashboardPage() {
         <h2 className="text-xl font-black tracking-tight text-foreground">Comece por aqui</h2>
         <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {[
-            { icon: Wand2, title: "Redecorar ambiente", desc: "Foto real → 4 propostas em 20s.", to: "/app/gerar/redecorar", badge: "Novo" },
-            { icon: Sparkles, title: "Gerar objeto 3D", desc: "Sobe uma foto ou descreve.", to: "/app/gerar" },
-            { icon: Map, title: "Render de planta", desc: "Planta 2D vira render 3D.", to: "/app/gerar/planta" },
-            { icon: FolderOpen, title: "Projetos", desc: "Agrupe por cliente.", to: "/app/projetos" },
+            {
+              icon: Wand2,
+              title: "Redecorar ambiente",
+              desc: "Foto real → 4 propostas em 20s.",
+              to: "/app/gerar/redecorar",
+              badge: "Novo",
+            },
+            {
+              icon: Sparkles,
+              title: "Gerar objeto 3D",
+              desc: "Sobe uma foto ou descreve.",
+              to: "/app/gerar",
+            },
+            {
+              icon: Map,
+              title: "Render de planta",
+              desc: "Planta 2D vira render 3D.",
+              to: "/app/gerar/planta",
+            },
+            {
+              icon: FolderOpen,
+              title: "Projetos",
+              desc: "Agrupe por cliente.",
+              to: "/app/projetos",
+            },
           ].map((c) => (
             <Link
               key={c.title}
@@ -186,7 +235,7 @@ function DashboardPage() {
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-            {gens.map((g) => {
+            {gens.map((g: RecentGen) => {
               const thumb = g.thumbnail_url ?? g.final_render_url;
               return (
                 <Link
@@ -222,13 +271,11 @@ function DashboardPage() {
         </div>
         {projects.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border/60 bg-card/50 p-10 text-center">
-            <p className="text-sm font-light text-muted-foreground">
-              Nenhum projeto criado ainda.
-            </p>
+            <p className="text-sm font-light text-muted-foreground">Nenhum projeto criado ainda.</p>
           </div>
         ) : (
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            {projects.map((p) => (
+            {projects.map((p: RecentProject) => (
               <Link
                 key={p.id}
                 to="/app/projetos/$projectId"

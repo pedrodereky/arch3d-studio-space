@@ -71,11 +71,7 @@ export function WizardShell({
                 </span>
               </div>
               {i < totalVisible - 1 && (
-                <div
-                  className={
-                    "mx-1 mb-5 h-px flex-1 " + (isDone ? "bg-accent" : "bg-border")
-                  }
-                />
+                <div className={"mx-1 mb-5 h-px flex-1 " + (isDone ? "bg-accent" : "bg-border")} />
               )}
             </div>
           );

@@ -4,14 +4,14 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { callGptImage2OpenAI } from "../_shared/gpt-image-2-openai.ts";
+import { checkUserBudget } from "../_shared/spend-guard.ts";
 import { composeStylePrompt, type StylePreset } from "../_shared/redecorate-prompt.ts";
 
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void };
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -84,26 +84,27 @@ async function processIterate(params: {
       keepLayout,
     });
 
-    const openaiKey =
-      (await getSecret("OPENAI_API_KEY")) ?? Deno.env.get("OPENAI_API_KEY");
+    const openaiKey = (await getSecret("OPENAI_API_KEY")) ?? Deno.env.get("OPENAI_API_KEY");
     if (!openaiKey) throw new Error("OPENAI_API_KEY não configurado");
 
-    const { data: dlBlob, error: dlErr } = await admin.storage
-      .from("inputs")
-      .download(sourcePath);
+    const { data: dlBlob, error: dlErr } = await admin.storage.from("inputs").download(sourcePath);
     if (dlErr || !dlBlob) throw new Error(`falha ao baixar foto: ${dlErr?.message ?? "?"}`);
     const srcBytes = new Uint8Array(await dlBlob.arrayBuffer());
     const srcMime = dlBlob.type || mimeFromPath(sourcePath);
 
-    const seeds = Array.from({ length: nVariations }, () =>
-      Math.floor(Math.random() * 1_000_000),
-    );
+    const seeds = Array.from({ length: nVariations }, () => Math.floor(Math.random() * 1_000_000));
 
     const results = await Promise.all(
       seeds.map(() =>
         callGptImage2OpenAI(
           openaiKey,
-          [{ bytes: srcBytes, mime: srcMime, filename: `room.${srcMime.includes("png") ? "png" : "jpg"}` }],
+          [
+            {
+              bytes: srcBytes,
+              mime: srcMime,
+              filename: `room.${srcMime.includes("png") ? "png" : "jpg"}`,
+            },
+          ],
           prompt,
           { aspect_ratio: "3:2", quality: "high", output_format: "jpeg" },
         ).catch((e: Error) => ({ error: e.message })),
@@ -179,6 +180,14 @@ Deno.serve(async (req) => {
 
   try {
     const userId = await getUserId(req);
+    const budget = await checkUserBudget(admin, userId);
+    if (!budget.allowed) {
+      return new Response(JSON.stringify({ ok: false, error: budget.reason }), {
+        status: 429,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const body = (await req.json()) as Body;
     if (!body.generationId) throw new Error("generationId obrigatório");
     const nVariations = body.addVariations ?? 4;
@@ -244,12 +253,9 @@ Deno.serve(async (req) => {
   } catch (e) {
     const msg = (e as Error).message ?? "falha desconhecida";
     console.error("redecorate-iterate erro", msg);
-    return new Response(
-      JSON.stringify({ ok: false, error: msg }),
-      {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
-    );
+    return new Response(JSON.stringify({ ok: false, error: msg }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });

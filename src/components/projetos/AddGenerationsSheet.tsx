@@ -1,15 +1,12 @@
 // Sheet para adicionar gerações de uma biblioteca a um projeto.
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Loader2, Check } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { qk } from "@/lib/query-keys";
 import { useAuth } from "@/lib/auth-context";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { FreshImg } from "@/components/library/FreshMedia";
 
 type Gen = {
@@ -35,31 +32,40 @@ export function AddGenerationsSheet({
   onAdded: () => void;
 }) {
   const { user } = useAuth();
-  const [gens, setGens] = useState<Gen[]>([]);
-  const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
 
+  const {
+    data: gens = [],
+    isPending,
+    error,
+  } = useQuery({
+    queryKey: qk.generationsList({ view: "add-to-project", userId: user?.id }),
+    // Só busca com o sheet aberto; fechado, o cache fica lá para a próxima vez.
+    enabled: open && !!user,
+    queryFn: async () => {
+      const { data, error: queryError } = await supabase
+        .from("generations")
+        .select("id, pipeline_type, thumbnail_url, final_render_url, prompt, created_at")
+        .eq("user_id", user!.id)
+        .eq("status", "succeeded")
+        .order("created_at", { ascending: false })
+        .limit(200);
+      if (queryError) throw new Error(queryError.message);
+      return (data ?? []) as Gen[];
+    },
+  });
+
+  const loading = isPending && open && !!user;
+
   useEffect(() => {
-    if (!open || !user) return;
-    setLoading(true);
-    setSelected(new Set());
-    void supabase
-      .from("generations")
-      .select("id, pipeline_type, thumbnail_url, final_render_url, prompt, created_at")
-      .eq("user_id", user.id)
-      .eq("status", "succeeded")
-      .order("created_at", { ascending: false })
-      .limit(200)
-      .then(({ data, error }) => {
-        setLoading(false);
-        if (error) {
-          toast.error("Erro: " + error.message);
-          return;
-        }
-        setGens((data ?? []) as Gen[]);
-      });
-  }, [open, user]);
+    if (error) toast.error("Erro: " + error.message);
+  }, [error]);
+
+  // Limpa a seleção a cada abertura.
+  useEffect(() => {
+    if (open) setSelected(new Set());
+  }, [open]);
 
   function toggle(id: string) {
     if (existingIds.has(id)) return;

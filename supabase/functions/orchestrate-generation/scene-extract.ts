@@ -38,27 +38,56 @@ const FUNCTION_SCHEMA = {
             type: {
               type: "STRING",
               enum: [
-                "sofa", "armchair", "chair", "bed_double", "bed_single",
-                "table_dining", "table_coffee", "desk", "wardrobe", "tv",
-                "toilet", "sink", "bathtub", "shower", "stove", "fridge",
-                "kitchen_counter", "lamp", "plant",
+                "sofa",
+                "armchair",
+                "chair",
+                "bed_double",
+                "bed_single",
+                "table_dining",
+                "table_coffee",
+                "desk",
+                "wardrobe",
+                "tv",
+                "toilet",
+                "sink",
+                "bathtub",
+                "shower",
+                "stove",
+                "fridge",
+                "kitchen_counter",
+                "lamp",
+                "plant",
               ],
             },
             x: { type: "NUMBER", description: "Center X in meters on a top-down floor plan." },
             y: { type: "NUMBER", description: "Center Y (depth) in meters." },
-            rotation_deg: { type: "NUMBER", description: "Rotation in degrees, 0 = facing +y (toward camera)." },
+            rotation_deg: {
+              type: "NUMBER",
+              description: "Rotation in degrees, 0 = facing +y (toward camera).",
+            },
             width_m: { type: "NUMBER" },
             depth_m: { type: "NUMBER" },
             prompt: {
               type: "STRING",
-              description: "Detailed English description of THIS specific item (style, material, color, finish). Used as text fallback. Always end with: 'photorealistic, single object, isolated, white background, neutral lighting'.",
+              description:
+                "Detailed English description of THIS specific item (style, material, color, finish). Used as text fallback. Always end with: 'photorealistic, single object, isolated, white background, neutral lighting'.",
             },
             isolation_prompt: {
               type: "STRING",
-              description: "Instruction in English telling an image model to ISOLATE this exact object from the original scene image and render it alone, centered, on a pure white background, soft studio lighting, with no other objects, no shadows on ground, no perspective distortion. Be very specific about which object to isolate (mention position, color, distinctive features) so the model picks the right one when there are multiple similar items.",
+              description:
+                "Instruction in English telling an image model to ISOLATE this exact object from the original scene image and render it alone, centered, on a pure white background, soft studio lighting, with no other objects, no shadows on ground, no perspective distortion. Be very specific about which object to isolate (mention position, color, distinctive features) so the model picks the right one when there are multiple similar items.",
             },
           },
-          required: ["type", "x", "y", "rotation_deg", "width_m", "depth_m", "prompt", "isolation_prompt"],
+          required: [
+            "type",
+            "x",
+            "y",
+            "rotation_deg",
+            "width_m",
+            "depth_m",
+            "prompt",
+            "isolation_prompt",
+          ],
         },
       },
     },
@@ -71,7 +100,7 @@ const SYSTEM_PROMPT =
   "RULES:\n" +
   "(1) Use METERS. Estimate using standard references: chair seat=0.45m high, dining chair footprint ~0.5x0.5m, sofa 2.2x0.9m, fridge 0.7x0.7x1.9m, dining table 1.6x0.9m.\n" +
   "(2) Place each object on a top-down floor plan: origin (0,0) at the visual back-left of the floor, +x to the right, +y toward the camera. Spread objects realistically — don't stack them at the same point.\n" +
-  "(3) For repeated identical items (e.g. 3 dining chairs in a row), emit ONE entry per chair with distinct positions but the SAME prompt and isolation_prompt — except the isolation_prompt must specify WHICH chair (\"the leftmost chair\", \"the middle chair\", etc.).\n" +
+  '(3) For repeated identical items (e.g. 3 dining chairs in a row), emit ONE entry per chair with distinct positions but the SAME prompt and isolation_prompt — except the isolation_prompt must specify WHICH chair ("the leftmost chair", "the middle chair", etc.).\n' +
   "(4) IGNORE: walls, ceiling, floor, recessed ceiling lights, wall outlets, decorative items smaller than 20cm, items embedded in cabinetry that you cannot isolate.\n" +
   `(5) Cap output at ${MAX_OBJECTS} objects. Pick the most prominent / largest items if there are more.\n` +
   "(6) The isolation_prompt is the most important field. It will be sent to an image model along with the original scene image to produce a clean isolated render of that one object on white background. Make it specific enough that the model picks the right object.\n" +
@@ -133,7 +162,8 @@ function validateScene(raw: unknown): Scene {
     if (!o.width_m || o.width_m <= 0) o.width_m = 0.6;
     if (!o.depth_m || o.depth_m <= 0) o.depth_m = 0.6;
     if (typeof o.rotation_deg !== "number") o.rotation_deg = 0;
-    if (!o.prompt) o.prompt = `a ${o.type}, photorealistic, single object, isolated, white background, neutral lighting`;
+    if (!o.prompt)
+      o.prompt = `a ${o.type}, photorealistic, single object, isolated, white background, neutral lighting`;
     if (!o.isolation_prompt) {
       o.isolation_prompt = `Isolate the ${o.type} from this image. Render it alone, centered, fully visible, on a pure white background (#FFFFFF), soft even studio lighting, no other objects, no shadows on the ground, no perspective distortion, photorealistic.`;
     }

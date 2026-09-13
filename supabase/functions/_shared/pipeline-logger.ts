@@ -30,7 +30,10 @@ function truncate(value: unknown): unknown {
 export type Logger = {
   enabled: boolean;
   start: (step: string, details?: Record<string, unknown>) => LogHandle;
-  end: (h: LogHandle, opts?: { payload_kb?: number; details?: Record<string, unknown>; message?: string }) => void;
+  end: (
+    h: LogHandle,
+    opts?: { payload_kb?: number; details?: Record<string, unknown>; message?: string },
+  ) => void;
   error: (step: string, err: unknown, details?: Record<string, unknown>) => void;
   info: (step: string, message: string, details?: Record<string, unknown>) => void;
 };
@@ -46,13 +49,17 @@ export function createLogger(opts: {
   const persist = (row: Record<string, unknown>) => {
     if (!enabled) return;
     // fire-and-forget
-    admin.from("generation_logs").insert({
-      generation_id: generationId,
-      user_id: userId,
-      ...row,
-    }).then(({ error }: { error: unknown }) => {
-      if (error) console.warn("[logger] insert fail:", (error as Error)?.message ?? error);
-    }).catch((e: unknown) => console.warn("[logger] insert throw:", (e as Error)?.message ?? e));
+    admin
+      .from("generation_logs")
+      .insert({
+        generation_id: generationId,
+        user_id: userId,
+        ...row,
+      })
+      .then(({ error }: { error: unknown }) => {
+        if (error) console.warn("[logger] insert fail:", (error as Error)?.message ?? error);
+      })
+      .catch((e: unknown) => console.warn("[logger] insert throw:", (e as Error)?.message ?? e));
   };
 
   return {
@@ -71,7 +78,9 @@ export function createLogger(opts: {
         `${dur}ms`,
         o?.payload_kb != null ? `${o.payload_kb}KB` : null,
         mem != null ? `mem=${mem}MB` : null,
-      ].filter(Boolean).join(" · ");
+      ]
+        .filter(Boolean)
+        .join(" · ");
       console.log(`[step] ${h.step} END ${extras}${o?.message ? ` — ${o.message}` : ""}`);
       persist({
         step: h.step,

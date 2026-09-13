@@ -65,10 +65,9 @@ export function ExtractFurnitureDialog({ open, onOpenChange, runId, nodeId, onLa
 
     (async () => {
       try {
-        const { data, error: fnErr } = await supabase.functions.invoke(
-          "studio-detect-furniture",
-          { body: { runId, nodeId } },
-        );
+        const { data, error: fnErr } = await supabase.functions.invoke("studio-detect-furniture", {
+          body: { runId, nodeId },
+        });
         if (cancelled) return;
         if (fnErr) throw fnErr;
         if (!data?.ok) throw new Error(data?.error ?? "falha na detecção");
@@ -186,13 +185,8 @@ export function ExtractFurnitureDialog({ open, onOpenChange, runId, nodeId, onLa
           >
             Cancelar
           </Button>
-          <Button
-            onClick={handleLaunch}
-            disabled={phase !== "listing" || selected.size === 0}
-          >
-            {phase === "submitting" ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : null}
+          <Button onClick={handleLaunch} disabled={phase !== "listing" || selected.size === 0}>
+            {phase === "submitting" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Gerar 3D ({selected.size})
           </Button>
         </DialogFooter>

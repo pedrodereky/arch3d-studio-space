@@ -44,9 +44,7 @@ export function VisionAnalysisSheet({ open, loading, analysis, onClose, onExport
 
       {!loading && !analysis && (
         <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
-          <p className="text-[12px] font-light text-muted-foreground">
-            Nenhuma análise carregada.
-          </p>
+          <p className="text-[12px] font-light text-muted-foreground">Nenhuma análise carregada.</p>
         </div>
       )}
 
@@ -87,9 +85,7 @@ export function VisionAnalysisSheet({ open, loading, analysis, onClose, onExport
                       key={`${r.name}-${i}`}
                       className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2"
                     >
-                      <span className="text-[12px] font-bold text-foreground">
-                        {r.name}
-                      </span>
+                      <span className="text-[12px] font-bold text-foreground">{r.name}</span>
                       {r.areaM2 != null && (
                         <span className="text-[12px] font-black text-foreground">
                           {r.areaM2.toFixed(1)} m²

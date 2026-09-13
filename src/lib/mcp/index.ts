@@ -6,8 +6,7 @@ import listGenerations from "./tools/list-generations";
 import getGeneration from "./tools/get-generation";
 
 // O issuer OAuth precisa ser o host direto do Supabase (o proxy publicado é rejeitado).
-const projectRef =
-  import.meta.env["VITE_SUPABASE_PROJECT_ID"] ?? "project-ref-unset";
+const projectRef = import.meta.env["VITE_SUPABASE_PROJECT_ID"] ?? "project-ref-unset";
 
 export default defineMcp({
   name: "arq3d-studio",

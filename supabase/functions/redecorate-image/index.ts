@@ -5,6 +5,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { callGptImage2OpenAI } from "../_shared/gpt-image-2-openai.ts";
+import { checkUserBudget } from "../_shared/spend-guard.ts";
 import { composeStylePrompt, type StylePreset } from "../_shared/redecorate-prompt.ts";
 import { createLogger } from "../_shared/pipeline-logger.ts";
 
@@ -12,8 +13,7 @@ declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void };
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -95,8 +95,7 @@ async function processGeneration(params: {
       engine: "gpt_image_2",
     });
 
-    const openaiKey =
-      (await getSecret("OPENAI_API_KEY")) ?? Deno.env.get("OPENAI_API_KEY");
+    const openaiKey = (await getSecret("OPENAI_API_KEY")) ?? Deno.env.get("OPENAI_API_KEY");
     if (!openaiKey) throw new Error("OPENAI_API_KEY não configurado");
 
     const { data: dlBlob, error: dlErr } = await admin.storage
@@ -123,7 +122,13 @@ async function processGeneration(params: {
       seeds.map(() =>
         callGptImage2OpenAI(
           openaiKey,
-          [{ bytes: srcBytes, mime: srcMime, filename: `room.${srcMime.includes("png") ? "png" : "jpg"}` }],
+          [
+            {
+              bytes: srcBytes,
+              mime: srcMime,
+              filename: `room.${srcMime.includes("png") ? "png" : "jpg"}`,
+            },
+          ],
           prompt,
           { aspect_ratio: "3:2", quality: "high", output_format: "jpeg" },
         ).catch((e: Error) => ({ error: e.message })),
@@ -215,15 +220,22 @@ Deno.serve(async (req) => {
 
   try {
     const userId = await getUserId(req);
+    const budget = await checkUserBudget(admin, userId);
+    if (!budget.allowed) {
+      return new Response(JSON.stringify({ ok: false, error: budget.reason }), {
+        status: 429,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const body = (await req.json()) as Body;
 
     if (!body.sourceImagePath) throw new Error("sourceImagePath obrigatório");
     if (!body.stylePreset && !(body.stylePrompt && body.stylePrompt.trim().length >= 4)) {
       throw new Error("informe um stylePreset ou stylePrompt com pelo menos 4 caracteres");
     }
-    const nVariations = (body.variations === 1 || body.variations === 2 || body.variations === 4)
-      ? body.variations
-      : 4;
+    const nVariations =
+      body.variations === 1 || body.variations === 2 || body.variations === 4 ? body.variations : 4;
     const keepLayout = body.keepLayout ?? true;
 
     const { count: inProgress } = await admin
@@ -273,22 +285,16 @@ Deno.serve(async (req) => {
       }),
     );
 
-    return new Response(
-      JSON.stringify({ ok: true, generationId, status: "processing" }),
-      {
-        status: 202,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
-    );
+    return new Response(JSON.stringify({ ok: true, generationId, status: "processing" }), {
+      status: 202,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (e) {
     const msg = (e as Error).message ?? "falha desconhecida";
     console.error("redecorate-image erro", msg);
-    return new Response(
-      JSON.stringify({ ok: false, error: msg }),
-      {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
-    );
+    return new Response(JSON.stringify({ ok: false, error: msg }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
