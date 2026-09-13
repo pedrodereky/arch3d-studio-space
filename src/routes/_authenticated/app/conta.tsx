@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Loader2, User as UserIcon, KeyRound, DollarSign } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,35 +21,29 @@ function ContaPage() {
   const [pwd2, setPwd2] = useState("");
   const [savingPwd, setSavingPwd] = useState(false);
 
-  const [monthCost, setMonthCost] = useState<number | null>(null);
-  const [monthCount, setMonthCount] = useState<number | null>(null);
+  const { data: usage } = useQuery({
+    queryKey: ["conta-usage", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const since = new Date();
+      since.setDate(since.getDate() - 30);
+      const { data, count, error } = await supabase
+        .from("generations")
+        .select("cost_usd, status", { count: "exact" })
+        .eq("user_id", user!.id)
+        .eq("status", "succeeded")
+        .gte("created_at", since.toISOString());
+      if (error) throw new Error(error.message);
+      const sum = (data ?? []).reduce(
+        (acc, r) => acc + Number((r as { cost_usd: number | null }).cost_usd ?? 0),
+        0,
+      );
+      return { monthCost: sum, monthCount: count ?? 0 };
+    },
+  });
 
-  useEffect(() => {
-    if (!profile) return;
-    setFullName(profile.full_name ?? "");
-    setCau(profile.cau_number ?? "");
-    setOffice(profile.office_name ?? "");
-  }, [profile]);
-
-  useEffect(() => {
-    if (!user) return;
-    const since = new Date();
-    since.setDate(since.getDate() - 30);
-    void supabase
-      .from("generations")
-      .select("cost_usd, status", { count: "exact" })
-      .eq("user_id", user.id)
-      .eq("status", "succeeded")
-      .gte("created_at", since.toISOString())
-      .then(({ data, count }) => {
-        const sum = (data ?? []).reduce(
-          (acc, r) => acc + Number((r as { cost_usd: number | null }).cost_usd ?? 0),
-          0,
-        );
-        setMonthCost(sum);
-        setMonthCount(count ?? 0);
-      });
-  }, [user]);
+  const monthCost = usage?.monthCost ?? null;
+  const monthCount = usage?.monthCount ?? null;
 
   async function saveProfile(e: React.FormEvent) {
     e.preventDefault();
