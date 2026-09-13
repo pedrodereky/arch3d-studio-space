@@ -7,11 +7,18 @@ import {
   useLocation,
   useMatches,
 } from "@tanstack/react-router";
-import { Loader2, User, LogOut, Shield, Menu, Plus, Search } from "lucide-react";
+import { Loader2, LogOut, Menu, Plus, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import "@/lib/route-static-data";
-import { navSections, adminItems, isActive, currentLabel, type NavLeaf } from "@/lib/nav-items";
+import {
+  navSections,
+  adminItems,
+  ACCOUNT_ITEMS,
+  isActive,
+  currentLabel,
+  type NavLeaf,
+} from "@/lib/nav-items";
 import { GlobalSearch } from "@/components/search/GlobalSearch";
 import { Wordmark } from "@/components/brand/Wordmark";
 import { GenerationNotifier } from "@/components/notifications/GenerationNotifier";
@@ -106,9 +113,14 @@ function AuthenticatedLayout() {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => navigate({ to: "/app/conta" })}>
-          <User className="mr-2 h-4 w-4" /> Conta
-        </DropdownMenuItem>
+        {/* Conta e Transparência saíram da barra lateral: são destinos raros,
+            e Transparência não tem outro link no app — sem isto sobraria só
+            o ⌘K. */}
+        {ACCOUNT_ITEMS.map((item) => (
+          <DropdownMenuItem key={item.to} onClick={() => navigate({ to: item.to })}>
+            <item.icon className="mr-2 h-4 w-4" /> {item.label}
+          </DropdownMenuItem>
+        ))}
         <DropdownMenuItem
           onClick={async () => {
             await signOut();
