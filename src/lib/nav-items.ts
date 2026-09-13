@@ -72,10 +72,19 @@ export const navSections: NavSection[] = [
       { to: "/app/studio", label: "Studio", icon: Workflow },
       { to: "/app/biblioteca", label: "Biblioteca", icon: Library },
       { to: "/app/projetos", label: "Projetos", icon: FolderOpen },
-      { to: "/app/transparencia", label: "Transparência IA", icon: ShieldCheck },
-      { to: "/app/conta", label: "Conta", icon: User },
     ],
   },
+];
+
+/**
+ * Destinos de conta, fora da barra lateral: são raros e não competem com o
+ * trabalho. Ficam no menu do avatar — Transparência não tinha nenhum outro
+ * link no app, e sair da barra lateral sem isso a deixaria alcançável só por
+ * ⌘K, o que é pouco para uma página que existe para ser mostrada.
+ */
+export const ACCOUNT_ITEMS: NavLeaf[] = [
+  { to: "/app/conta", label: "Conta", icon: User },
+  { to: "/app/transparencia", label: "Transparência IA", icon: ShieldCheck },
 ];
 
 export const adminItems: NavLeaf[] = [
@@ -100,6 +109,7 @@ export const isActive = (item: NavLeaf, pathname: string) =>
 export const ALL_SCREENS: NavLeaf[] = [
   ...navSections.flatMap((s) => s.items).filter((i) => i.to !== "/app/gerar/planta"),
   ...PLANTA_ROUTES,
+  ...ACCOUNT_ITEMS,
   ...adminItems,
 ];
 
