@@ -12,8 +12,7 @@ declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void };
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -95,8 +94,7 @@ async function processGeneration(params: {
       engine: "gpt_image_2",
     });
 
-    const openaiKey =
-      (await getSecret("OPENAI_API_KEY")) ?? Deno.env.get("OPENAI_API_KEY");
+    const openaiKey = (await getSecret("OPENAI_API_KEY")) ?? Deno.env.get("OPENAI_API_KEY");
     if (!openaiKey) throw new Error("OPENAI_API_KEY não configurado");
 
     const { data: dlBlob, error: dlErr } = await admin.storage
@@ -123,7 +121,13 @@ async function processGeneration(params: {
       seeds.map(() =>
         callGptImage2OpenAI(
           openaiKey,
-          [{ bytes: srcBytes, mime: srcMime, filename: `room.${srcMime.includes("png") ? "png" : "jpg"}` }],
+          [
+            {
+              bytes: srcBytes,
+              mime: srcMime,
+              filename: `room.${srcMime.includes("png") ? "png" : "jpg"}`,
+            },
+          ],
           prompt,
           { aspect_ratio: "3:2", quality: "high", output_format: "jpeg" },
         ).catch((e: Error) => ({ error: e.message })),
@@ -221,9 +225,8 @@ Deno.serve(async (req) => {
     if (!body.stylePreset && !(body.stylePrompt && body.stylePrompt.trim().length >= 4)) {
       throw new Error("informe um stylePreset ou stylePrompt com pelo menos 4 caracteres");
     }
-    const nVariations = (body.variations === 1 || body.variations === 2 || body.variations === 4)
-      ? body.variations
-      : 4;
+    const nVariations =
+      body.variations === 1 || body.variations === 2 || body.variations === 4 ? body.variations : 4;
     const keepLayout = body.keepLayout ?? true;
 
     const { count: inProgress } = await admin
@@ -273,22 +276,16 @@ Deno.serve(async (req) => {
       }),
     );
 
-    return new Response(
-      JSON.stringify({ ok: true, generationId, status: "processing" }),
-      {
-        status: 202,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
-    );
+    return new Response(JSON.stringify({ ok: true, generationId, status: "processing" }), {
+      status: 202,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (e) {
     const msg = (e as Error).message ?? "falha desconhecida";
     console.error("redecorate-image erro", msg);
-    return new Response(
-      JSON.stringify({ ok: false, error: msg }),
-      {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
-    );
+    return new Response(JSON.stringify({ ok: false, error: msg }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });

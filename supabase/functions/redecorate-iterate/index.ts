@@ -10,8 +10,7 @@ declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void };
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -84,26 +83,27 @@ async function processIterate(params: {
       keepLayout,
     });
 
-    const openaiKey =
-      (await getSecret("OPENAI_API_KEY")) ?? Deno.env.get("OPENAI_API_KEY");
+    const openaiKey = (await getSecret("OPENAI_API_KEY")) ?? Deno.env.get("OPENAI_API_KEY");
     if (!openaiKey) throw new Error("OPENAI_API_KEY não configurado");
 
-    const { data: dlBlob, error: dlErr } = await admin.storage
-      .from("inputs")
-      .download(sourcePath);
+    const { data: dlBlob, error: dlErr } = await admin.storage.from("inputs").download(sourcePath);
     if (dlErr || !dlBlob) throw new Error(`falha ao baixar foto: ${dlErr?.message ?? "?"}`);
     const srcBytes = new Uint8Array(await dlBlob.arrayBuffer());
     const srcMime = dlBlob.type || mimeFromPath(sourcePath);
 
-    const seeds = Array.from({ length: nVariations }, () =>
-      Math.floor(Math.random() * 1_000_000),
-    );
+    const seeds = Array.from({ length: nVariations }, () => Math.floor(Math.random() * 1_000_000));
 
     const results = await Promise.all(
       seeds.map(() =>
         callGptImage2OpenAI(
           openaiKey,
-          [{ bytes: srcBytes, mime: srcMime, filename: `room.${srcMime.includes("png") ? "png" : "jpg"}` }],
+          [
+            {
+              bytes: srcBytes,
+              mime: srcMime,
+              filename: `room.${srcMime.includes("png") ? "png" : "jpg"}`,
+            },
+          ],
           prompt,
           { aspect_ratio: "3:2", quality: "high", output_format: "jpeg" },
         ).catch((e: Error) => ({ error: e.message })),
@@ -244,12 +244,9 @@ Deno.serve(async (req) => {
   } catch (e) {
     const msg = (e as Error).message ?? "falha desconhecida";
     console.error("redecorate-iterate erro", msg);
-    return new Response(
-      JSON.stringify({ ok: false, error: msg }),
-      {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
-    );
+    return new Response(JSON.stringify({ ok: false, error: msg }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });

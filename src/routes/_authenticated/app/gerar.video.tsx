@@ -74,8 +74,8 @@ function GerarVideoPage() {
       <header className="mb-8">
         <h1 className="text-3xl font-black text-foreground">Vídeo POV</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Selecione um render de planta para gerar um vídeo em primeira pessoa.
-          15 segundos · 1080p · 16:9 · modelo Happyhorse 1.0.
+          Selecione um render de planta para gerar um vídeo em primeira pessoa. 15 segundos · 1080p
+          · 16:9 · modelo Happyhorse 1.0.
         </p>
       </header>
 

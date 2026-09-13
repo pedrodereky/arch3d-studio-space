@@ -5,3 +5,13 @@ dist
 pnpm-lock.yaml
 package-lock.json
 routeTree.gen.ts
+
+# Kit de referência versionado como documentação, não código da aplicação
+design-system
+
+# Arquivos gerados — formatá-los só cria churn que o gerador desfaz
+.lovable
+src/integrations/supabase
+src/routes/mcp.ts
+src/routes/\[.mcp\]
+src/routes/\[.well-known\]

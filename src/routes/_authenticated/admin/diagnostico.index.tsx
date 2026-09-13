@@ -32,7 +32,9 @@ function DiagnosticoListPage() {
     (async () => {
       let q = supabase
         .from("generations")
-        .select("id,user_id,status,progress_percent,progress_stage,error_message,created_at,metadata")
+        .select(
+          "id,user_id,status,progress_percent,progress_stage,error_message,created_at,metadata",
+        )
         .eq("pipeline_type", "floorplan_render")
         .order("created_at", { ascending: false })
         .limit(50);
@@ -53,8 +55,8 @@ function DiagnosticoListPage() {
       <div>
         <h1 className="text-2xl font-black text-foreground">Diagnóstico de gerações</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Últimas 50 gerações do pipeline floorplan_render. Logs detalhados aparecem
-          quando a geração foi disparada com modo diagnóstico ativo.
+          Últimas 50 gerações do pipeline floorplan_render. Logs detalhados aparecem quando a
+          geração foi disparada com modo diagnóstico ativo.
         </p>
       </div>
 
@@ -98,7 +100,8 @@ function DiagnosticoListPage() {
             </thead>
             <tbody>
               {rows.map((r) => {
-                const diag = (r.metadata as Record<string, unknown> | null)?.diagnostics_mode === true;
+                const diag =
+                  (r.metadata as Record<string, unknown> | null)?.diagnostics_mode === true;
                 return (
                   <tr key={r.id} className="border-t border-border hover:bg-muted/30">
                     <td className="px-3 py-2 text-xs text-muted-foreground">

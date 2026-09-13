@@ -8,10 +8,7 @@ import { useAuth } from "@/lib/auth-context";
 import { PhotoDropzone } from "@/components/redecorar/PhotoDropzone";
 import { StylePicker } from "@/components/redecorar/StylePicker";
 import { LoadingStepper } from "@/components/redecorar/LoadingStepper";
-import {
-  VariationsGrid,
-  type RedecorateVariation,
-} from "@/components/redecorar/VariationsGrid";
+import { VariationsGrid, type RedecorateVariation } from "@/components/redecorar/VariationsGrid";
 import { PRESET_BY_ID, type RedecoratePresetId } from "@/lib/redecorate-presets";
 
 type Search = { projectId?: string };
@@ -175,7 +172,6 @@ function RedecorarPage() {
     }
   };
 
-
   const handleChangeStyle = () => {
     setPhase("input");
     setVariations([]);
@@ -224,8 +220,8 @@ function RedecorarPage() {
           Redecorar ambiente
         </h1>
         <p className="mt-3 max-w-xl font-light text-muted-foreground">
-          Foto real do ambiente → 4 propostas fotorrealistas em 20 segundos.
-          Mantém paredes, janelas e vãos; troca acabamentos, móveis e iluminação.
+          Foto real do ambiente → 4 propostas fotorrealistas em 20 segundos. Mantém paredes, janelas
+          e vãos; troca acabamentos, móveis e iluminação.
         </p>
       </header>
 
@@ -358,8 +354,8 @@ function RedecorarPage() {
                   )}
                 </button>
                 <p className="mt-2 text-center text-[11px] font-light text-muted-foreground">
-                  ≈ 20s · {nVariations} {nVariations === 1 ? "variação" : "variações"} ·
-                  cobrança no plano do workspace
+                  ≈ 20s · {nVariations} {nVariations === 1 ? "variação" : "variações"} · cobrança no
+                  plano do workspace
                 </p>
               </div>
             </div>
@@ -452,8 +448,8 @@ function HowItWorks() {
       <div className="mt-6 flex gap-2 rounded-md border border-border bg-muted/50 p-3">
         <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
         <p className="text-[11px] font-light leading-relaxed text-muted-foreground">
-          Mantém geometria do ambiente (paredes, vãos, janelas). Troca acabamentos,
-          móveis e iluminação. Não move parede.
+          Mantém geometria do ambiente (paredes, vãos, janelas). Troca acabamentos, móveis e
+          iluminação. Não move parede.
         </p>
       </div>
     </div>

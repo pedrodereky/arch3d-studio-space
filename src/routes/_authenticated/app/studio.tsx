@@ -101,7 +101,9 @@ type LibraryAsset = { id: string; url: string; path: string | null; label: strin
 function extractOutputsPath(rawUrl: string): string | null {
   try {
     const u = new URL(rawUrl);
-    const m = u.pathname.match(/\/storage\/v1\/object\/(?:sign|public|authenticated)\/outputs\/(.+)$/);
+    const m = u.pathname.match(
+      /\/storage\/v1\/object\/(?:sign|public|authenticated)\/outputs\/(.+)$/,
+    );
     return m ? decodeURIComponent(m[1]) : null;
   } catch {
     return null;
@@ -116,7 +118,12 @@ type TemplateDef = {
   build: () => { nodes: Node<StudioNodeData>[]; edges: Edge[] };
 };
 
-function mkNode(op: StudioOp, x: number, y: number, extra: Partial<StudioNodeData> = {}): Node<StudioNodeData> {
+function mkNode(
+  op: StudioOp,
+  x: number,
+  y: number,
+  extra: Partial<StudioNodeData> = {},
+): Node<StudioNodeData> {
   const meta = OP_META[op];
   return {
     id: `${op}-${Date.now()}-${Math.floor(Math.random() * 100000)}`,
@@ -232,13 +239,9 @@ type NodeResultEntry = {
   hash?: string;
 };
 
-function computeNodeHashes(
-  nodes: Node<StudioNodeData>[],
-  edges: Edge[],
-): Record<string, string> {
+function computeNodeHashes(nodes: Node<StudioNodeData>[], edges: Edge[]): Record<string, string> {
   const byId = new Map(nodes.map((n) => [n.id, n] as const));
-  const inputsOf = (id: string) =>
-    edges.filter((e) => e.target === id).map((e) => e.source);
+  const inputsOf = (id: string) => edges.filter((e) => e.target === id).map((e) => e.source);
   const memo = new Map<string, string>();
   const visit = (id: string, stack: Set<string>): string => {
     if (memo.has(id)) return memo.get(id)!;
@@ -268,9 +271,6 @@ function computeNodeHashes(
   for (const n of nodes) out[n.id] = visit(n.id, new Set());
   return out;
 }
-
-
-
 
 function StudioPage() {
   return (
@@ -349,12 +349,8 @@ function StudioInner() {
     })();
   }, [user, fromGeneration, nodes.length, setNodes]);
 
-
   const publishNode = useCallback(
-    async (
-      nodeId: string,
-      action: "save_only" | "scene_to_3d",
-    ) => {
+    async (nodeId: string, action: "save_only" | "scene_to_3d") => {
       if (!runId) {
         toast.error("Salve e execute o fluxo antes");
         return;
@@ -366,15 +362,12 @@ function StudioInner() {
         });
         if (error) throw error;
         if (!data?.ok) throw new Error(data?.error ?? "falha");
-        toast.success(
-          action === "save_only" ? "Salvo na biblioteca" : "3D em geração",
-          {
-            description:
-              action === "save_only"
-                ? "Aparece em /app/biblioteca."
-                : "Você verá o resultado na biblioteca em alguns minutos.",
-          },
-        );
+        toast.success(action === "save_only" ? "Salvo na biblioteca" : "3D em geração", {
+          description:
+            action === "save_only"
+              ? "Aparece em /app/biblioteca."
+              : "Você verá o resultado na biblioteca em alguns minutos.",
+        });
       } catch (e) {
         toast.error("Falha", { description: e instanceof Error ? e.message : "?" });
       } finally {
@@ -458,10 +451,10 @@ function StudioInner() {
         : undefined;
       const basePos = selected
         ? { x: selected.position.x + 280, y: selected.position.y }
-        : rfRef.current?.screenToFlowPosition({
+        : (rfRef.current?.screenToFlowPosition({
             x: window.innerWidth / 2,
             y: window.innerHeight / 2,
-          }) ?? { x: 100, y: 100 };
+          }) ?? { x: 100, y: 100 });
       const node: Node<StudioNodeData> = {
         id,
         type: "studio",
@@ -481,9 +474,7 @@ function StudioInner() {
 
   const updateNodeData = useCallback(
     (id: string, patch: Partial<StudioNodeData>) => {
-      setNodes((ns) =>
-        ns.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...patch } } : n)),
-      );
+      setNodes((ns) => ns.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...patch } } : n)));
     },
     [setNodes],
   );
@@ -605,7 +596,11 @@ function StudioInner() {
   const saveWorkflow = useCallback(async () => {
     if (!user) return;
     setSaving(true);
-    const graph = { nodes, edges, viewport: rfRef.current?.getViewport() ?? { x: 0, y: 0, zoom: 1 } } as unknown as Record<string, unknown>;
+    const graph = {
+      nodes,
+      edges,
+      viewport: rfRef.current?.getViewport() ?? { x: 0, y: 0, zoom: 1 },
+    } as unknown as Record<string, unknown>;
     if (workflowId) {
       const { error } = await supabase
         .from("studio_workflows")
@@ -700,7 +695,12 @@ function StudioInner() {
           }
           return {
             ...n,
-            data: { ...n.data, status: "idle" as const, resultUrl: undefined, errorMessage: undefined },
+            data: {
+              ...n.data,
+              status: "idle" as const,
+              resultUrl: undefined,
+              errorMessage: undefined,
+            },
           };
         }),
       );
@@ -712,7 +712,6 @@ function StudioInner() {
     },
     [setNodes, setEdges],
   );
-
 
   const newWorkflow = useCallback(() => {
     setWorkflowId(null);
@@ -822,12 +821,31 @@ function StudioInner() {
       ns.map((n) => {
         const r = reusedResults[n.id];
         return r?.url
-          ? { ...n, data: { ...n.data, status: "done" as const, resultUrl: r.url, errorMessage: undefined } }
-          : { ...n, data: { ...n.data, status: "idle" as const, resultUrl: undefined, errorMessage: undefined } };
+          ? {
+              ...n,
+              data: {
+                ...n.data,
+                status: "done" as const,
+                resultUrl: r.url,
+                errorMessage: undefined,
+              },
+            }
+          : {
+              ...n,
+              data: {
+                ...n.data,
+                status: "idle" as const,
+                resultUrl: undefined,
+                errorMessage: undefined,
+              },
+            };
       }),
     );
 
-    const graph = { nodes, edges, viewport: rfRef.current?.getViewport() } as unknown as Record<string, unknown>;
+    const graph = { nodes, edges, viewport: rfRef.current?.getViewport() } as unknown as Record<
+      string,
+      unknown
+    >;
 
     if (effectiveRunId) {
       const { error: updErr } = await supabase
@@ -894,7 +912,6 @@ function StudioInner() {
         toast.error(`Execução falhou: ${error.message}`);
         setRunning(false);
         return;
-
       }
       const res = data as {
         ok: boolean;
@@ -933,7 +950,9 @@ function StudioInner() {
             return;
           }
           if (r.status === "succeeded") return;
-          const nr = (r.node_results as Record<string, { url?: string; error?: string }> | null)?.[target];
+          const nr = (r.node_results as Record<string, { url?: string; error?: string }> | null)?.[
+            target
+          ];
           if (nr?.url || nr?.error) break;
           if (Date.now() - t0 > MAX_WAIT_MS) {
             toast.error("Tempo esgotado aguardando o nó.");
@@ -972,7 +991,10 @@ function StudioInner() {
       setNodes((ns) =>
         ns.map((n) =>
           desc.has(n.id)
-            ? { ...n, data: { ...n.data, status: "idle", resultUrl: undefined, errorMessage: undefined } }
+            ? {
+                ...n,
+                data: { ...n.data, status: "idle", resultUrl: undefined, errorMessage: undefined },
+              }
             : n,
         ),
       );
@@ -1020,7 +1042,9 @@ function StudioInner() {
               return;
             }
             if (r.status === "succeeded") return;
-            const nr = (r.node_results as Record<string, { url?: string; error?: string }> | null)?.[target];
+            const nr = (
+              r.node_results as Record<string, { url?: string; error?: string }> | null
+            )?.[target];
             if (nr?.url || nr?.error) break;
             if (Date.now() - t0 > MAX_WAIT_MS) {
               toast.error("Tempo esgotado aguardando o nó.");
@@ -1080,16 +1104,12 @@ function StudioInner() {
               for (const [nid, entry] of Object.entries(row.node_results ?? {})) {
                 patched[nid] = { ...(entry as NodeResultEntry), hash: hashes[nid] };
               }
-              await supabase
-                .from("studio_runs")
-                .update({ node_results: patched })
-                .eq("id", runId);
+              await supabase.from("studio_runs").update({ node_results: patched }).eq("id", runId);
             })();
           } else if (row.status === "failed") {
             setRunning(false);
             toast.error(row.error_message ?? "Execução falhou");
           }
-
         },
       )
       .subscribe();
@@ -1169,12 +1189,14 @@ function StudioInner() {
           className="h-8 max-w-xs text-sm"
           placeholder="Nome do workflow"
         />
-        {workflowId && (
-          <span className="text-[10px] text-muted-foreground">salvo</span>
-        )}
+        {workflowId && <span className="text-[10px] text-muted-foreground">salvo</span>}
         <div className="ml-auto flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={saveWorkflow} disabled={saving}>
-            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+            {saving ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Save className="h-3.5 w-3.5" />
+            )}
             Salvar
           </Button>
           <DropdownMenu>
@@ -1199,7 +1221,11 @@ function StudioInner() {
             </DropdownMenuContent>
           </DropdownMenu>
           <Button size="sm" onClick={runWorkflow} disabled={running}>
-            {running ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+            {running ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Play className="h-3.5 w-3.5" />
+            )}
             Executar
           </Button>
         </div>
@@ -1210,7 +1236,8 @@ function StudioInner() {
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir workflow?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação remove “{workflowName}” permanentemente. As execuções já realizadas serão preservadas.
+              Esta ação remove “{workflowName}” permanentemente. As execuções já realizadas serão
+              preservadas.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1240,7 +1267,8 @@ function StudioInner() {
             ))}
           </div>
           <p className="mt-3 rounded-md bg-muted/50 p-2 text-[10px] leading-relaxed text-muted-foreground">
-            Conecte arrastando da bolinha <span className="font-bold">direita</span> de um nó até a bolinha <span className="font-bold">esquerda</span> de outro.
+            Conecte arrastando da bolinha <span className="font-bold">direita</span> de um nó até a
+            bolinha <span className="font-bold">esquerda</span> de outro.
           </p>
         </div>
 
@@ -1260,25 +1288,27 @@ function StudioInner() {
               </div>
             </div>
           )}
-          {nodes.length > 0 && (() => {
-            // detecta nós soltos: nó que não é input nem output e não tem nenhuma conexão
-            const isolated = nodes.filter((n) => {
-              const meta = OP_META[n.data.op];
-              const hasIncoming = edges.some((e) => e.target === n.id);
-              const hasOutgoing = edges.some((e) => e.source === n.id);
-              if (meta.isInput) return !hasOutgoing;
-              if (meta.isOutput) return !hasIncoming;
-              return !hasIncoming && !hasOutgoing;
-            });
-            if (isolated.length === 0) return null;
-            return (
-              <div className="pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2">
-                <div className="pointer-events-auto rounded-md border border-amber-400/60 bg-amber-50 px-3 py-1.5 text-[11px] font-medium text-amber-800 shadow-sm dark:bg-amber-950/40 dark:text-amber-200">
-                  {isolated.length} nó{isolated.length > 1 ? "s" : ""} sem conexão. Arraste da bolinha direita até a esquerda do próximo nó.
+          {nodes.length > 0 &&
+            (() => {
+              // detecta nós soltos: nó que não é input nem output e não tem nenhuma conexão
+              const isolated = nodes.filter((n) => {
+                const meta = OP_META[n.data.op];
+                const hasIncoming = edges.some((e) => e.target === n.id);
+                const hasOutgoing = edges.some((e) => e.source === n.id);
+                if (meta.isInput) return !hasOutgoing;
+                if (meta.isOutput) return !hasIncoming;
+                return !hasIncoming && !hasOutgoing;
+              });
+              if (isolated.length === 0) return null;
+              return (
+                <div className="pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2">
+                  <div className="pointer-events-auto rounded-md border border-amber-400/60 bg-amber-50 px-3 py-1.5 text-[11px] font-medium text-amber-800 shadow-sm dark:bg-amber-950/40 dark:text-amber-200">
+                    {isolated.length} nó{isolated.length > 1 ? "s" : ""} sem conexão. Arraste da
+                    bolinha direita até a esquerda do próximo nó.
+                  </div>
                 </div>
-              </div>
-            );
-          })()}
+              );
+            })()}
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -1336,7 +1366,12 @@ function StudioInner() {
 
             {selectedNode.data.op === "library_pick" && (
               <div className="space-y-2">
-                <Button variant="outline" size="sm" className="w-full" onClick={() => openLibrary(selectedNode.id)}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => openLibrary(selectedNode.id)}
+                >
                   <LibraryIcon className="h-3.5 w-3.5" /> Escolher da biblioteca
                 </Button>
                 {selectedNode.data.signedUrl && (
@@ -1380,9 +1415,9 @@ function StudioInner() {
                 </label>
                 {selectedNode.data.op === "compose" && (
                   <div className="mb-2 rounded-md border border-border bg-muted/40 p-2 text-[10px] leading-relaxed text-muted-foreground">
-                    <span className="font-bold uppercase tracking-wide">Ordem importa:</span>{" "}
-                    a primeira aresta conectada vira <span className="font-bold">imagem 1</span>,
-                    a segunda vira <span className="font-bold">imagem 2</span>, e assim por diante.
+                    <span className="font-bold uppercase tracking-wide">Ordem importa:</span> a
+                    primeira aresta conectada vira <span className="font-bold">imagem 1</span>, a
+                    segunda vira <span className="font-bold">imagem 2</span>, e assim por diante.
                     Use essa numeração no prompt.
                   </div>
                 )}
@@ -1521,7 +1556,6 @@ function StudioInner() {
                   </p>
                 </div>
               )}
-
           </div>
         )}
       </div>
@@ -1562,7 +1596,12 @@ function StudioInner() {
                   className="aspect-square overflow-hidden rounded-md border border-border bg-muted hover:border-accent"
                   title={a.label}
                 >
-                  <img src={a.url} alt={a.label} className="h-full w-full object-cover" loading="lazy" />
+                  <img
+                    src={a.url}
+                    alt={a.label}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                  />
                 </button>
               ))}
             {!libraryLoading && !libraryError && library.length === 0 && (

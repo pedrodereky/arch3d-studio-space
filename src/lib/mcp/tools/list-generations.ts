@@ -33,8 +33,7 @@ export default defineTool({
     if (pipeline_type) query = query.eq("pipeline_type", pipeline_type);
     if (status) query = query.eq("status", status);
     const { data, error } = await query;
-    if (error)
-      return { content: [{ type: "text", text: error.message }], isError: true };
+    if (error) return { content: [{ type: "text", text: error.message }], isError: true };
     return {
       content: [{ type: "text", text: JSON.stringify(data ?? []) }],
       structuredContent: { generations: data ?? [] },

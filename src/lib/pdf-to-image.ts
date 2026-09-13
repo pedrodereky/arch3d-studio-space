@@ -3,9 +3,9 @@
 
 export async function pdfFirstPageToJpeg(file: File): Promise<File> {
   const pdfjs = await import("pdfjs-dist");
-  const workerMod = (await import(
-    /* @vite-ignore */ "pdfjs-dist/build/pdf.worker.mjs?url"
-  )) as { default: string };
+  const workerMod = (await import(/* @vite-ignore */ "pdfjs-dist/build/pdf.worker.mjs?url")) as {
+    default: string;
+  };
   pdfjs.GlobalWorkerOptions.workerSrc = workerMod.default;
 
   const buf = await file.arrayBuffer();
@@ -21,11 +21,7 @@ export async function pdfFirstPageToJpeg(file: File): Promise<File> {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   await page.render({ canvasContext: ctx, viewport, canvas } as never).promise;
   const blob: Blob = await new Promise((res, rej) =>
-    canvas.toBlob(
-      (b) => (b ? res(b) : rej(new Error("toBlob falhou"))),
-      "image/jpeg",
-      0.85,
-    ),
+    canvas.toBlob((b) => (b ? res(b) : rej(new Error("toBlob falhou"))), "image/jpeg", 0.85),
   );
   const base = file.name.replace(/\.pdf$/i, "");
   return new File([blob], `${base}-p1.jpg`, { type: "image/jpeg" });

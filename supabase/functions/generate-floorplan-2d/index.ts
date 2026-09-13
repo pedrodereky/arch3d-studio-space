@@ -8,20 +8,13 @@
 // → { generationId, assets: [{ id, url, seed, path }] }
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import {
-  runFloorplanLora,
-  downloadAsBytes,
-} from "../_shared/replicate-floorplan.ts";
-import {
-  composeFloorplanPrompt,
-  type BriefingInput,
-} from "../_shared/floorplan-prompt.ts";
+import { runFloorplanLora, downloadAsBytes } from "../_shared/replicate-floorplan.ts";
+import { composeFloorplanPrompt, type BriefingInput } from "../_shared/floorplan-prompt.ts";
 import { createLogger } from "../_shared/pipeline-logger.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -72,14 +65,24 @@ function validateBriefing(b: unknown): BriefingInput {
   };
   const estilo = obj.estilo;
   const validEstilos = [
-    "minimalista_moderno", "industrial", "escandinavo",
-    "neoclassico", "contemporaneo_brasileiro",
+    "minimalista_moderno",
+    "industrial",
+    "escandinavo",
+    "neoclassico",
+    "contemporaneo_brasileiro",
   ];
   if (typeof estilo !== "string" || !validEstilos.includes(estilo)) {
     throw new Error("estilo inválido");
   }
   const extras = Array.isArray(obj.extras) ? (obj.extras as unknown[]) : [];
-  const validExtras = ["varanda_gourmet", "escritorio", "lavabo", "area_servico", "closet", "despensa"];
+  const validExtras = [
+    "varanda_gourmet",
+    "escritorio",
+    "lavabo",
+    "area_servico",
+    "closet",
+    "despensa",
+  ];
   const filteredExtras = extras.filter(
     (e): e is string => typeof e === "string" && validExtras.includes(e),
   );
@@ -150,9 +153,7 @@ Deno.serve(async (req) => {
     if (!replicateToken) throw new Error("REPLICATE_API_TOKEN não configurado");
 
     // gera N plantas em paralelo
-    const seeds = Array.from({ length: N_VARIATIONS }, () =>
-      Math.floor(Math.random() * 1_000_000),
-    );
+    const seeds = Array.from({ length: N_VARIATIONS }, () => Math.floor(Math.random() * 1_000_000));
 
     const stepRender = logger.start("floor_plan_lora_variations");
     const results = await Promise.all(
@@ -273,9 +274,9 @@ Deno.serve(async (req) => {
         } as never)
         .eq("id", generationId);
     }
-    return new Response(
-      JSON.stringify({ ok: false, error: msg, generationId }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    return new Response(JSON.stringify({ ok: false, error: msg, generationId }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });

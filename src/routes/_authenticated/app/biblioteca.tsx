@@ -22,12 +22,7 @@ import { GerarVideoDialog } from "@/components/biblioteca/GerarVideoDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -92,7 +87,9 @@ function readVariations(meta: unknown): Variation[] {
   if (!meta || typeof meta !== "object") return [];
   const v = (meta as { variations?: unknown }).variations;
   if (!Array.isArray(v)) return [];
-  return v.filter((x): x is Variation => !!x && typeof x === "object" && typeof (x as Variation).url === "string");
+  return v.filter(
+    (x): x is Variation => !!x && typeof x === "object" && typeof (x as Variation).url === "string",
+  );
 }
 
 type CardItem = {
@@ -167,7 +164,8 @@ function BibliotecaPage() {
     const rows = items.filter((it) => {
       if (filter === "succeeded" && it.status !== "succeeded") return false;
       if (filter === "failed" && it.status !== "failed" && it.status !== "cancelled") return false;
-      if (filter === "processing" && it.status !== "queued" && it.status !== "processing") return false;
+      if (filter === "processing" && it.status !== "queued" && it.status !== "processing")
+        return false;
       if (query.trim()) {
         const q = query.toLowerCase();
         if (
@@ -208,9 +206,7 @@ function BibliotecaPage() {
           <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
             Biblioteca
           </p>
-          <h1 className="mt-2 text-4xl font-black tracking-tight text-foreground">
-            Suas gerações
-          </h1>
+          <h1 className="mt-2 text-4xl font-black tracking-tight text-foreground">Suas gerações</h1>
           <p className="mt-3 max-w-xl font-light text-muted-foreground">
             Tudo que você gerou aparece aqui. Baixe, torne público ou adicione a um projeto.
           </p>
@@ -358,54 +354,54 @@ function Card({
             : "border-border/60 hover:border-accent/40 hover:shadow-md")
         }
       >
-      <div className="relative aspect-square w-full overflow-hidden bg-muted">
-        {thumb ? (
-          <FreshImg
-            src={thumb}
-            alt=""
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-          />
-        ) : gen.status === "succeeded" && gen.glb_url ? (
-          <div className="pointer-events-none h-full w-full">
-            <ModelViewer src={gen.glb_url} alt={gen.prompt ?? "Modelo 3D"} compact />
+        <div className="relative aspect-square w-full overflow-hidden bg-muted">
+          {thumb ? (
+            <FreshImg
+              src={thumb}
+              alt=""
+              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            />
+          ) : gen.status === "succeeded" && gen.glb_url ? (
+            <div className="pointer-events-none h-full w-full">
+              <ModelViewer src={gen.glb_url} alt={gen.prompt ?? "Modelo 3D"} compact />
+            </div>
+          ) : (
+            <div className="flex h-full w-full items-center justify-center">
+              <LibraryIcon className="h-10 w-10 text-muted-foreground/40" strokeWidth={1.25} />
+            </div>
+          )}
+          <div className="absolute left-3 top-3">
+            <StatusPill status={gen.status} />
           </div>
-        ) : (
-          <div className="flex h-full w-full items-center justify-center">
-            <LibraryIcon className="h-10 w-10 text-muted-foreground/40" strokeWidth={1.25} />
-          </div>
-        )}
-        <div className="absolute left-3 top-3">
-          <StatusPill status={gen.status} />
+          {gen.is_public && (
+            <div className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-[4px] bg-primary/90 px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-primary-foreground">
+              <Globe className="h-3 w-3" />
+              Público
+            </div>
+          )}
+          {hasStack && (
+            <div className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-[4px] bg-foreground/85 px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-background">
+              {variantTotal} variações
+            </div>
+          )}
+          {gen.video_url && (
+            <div className="absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-[4px] bg-foreground/85 px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-background">
+              <Video className="h-3 w-3" />
+              Vídeo
+            </div>
+          )}
         </div>
-        {gen.is_public && (
-          <div className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-[4px] bg-primary/90 px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-primary-foreground">
-            <Globe className="h-3 w-3" />
-            Público
-          </div>
-        )}
-        {hasStack && (
-          <div className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-[4px] bg-foreground/85 px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-background">
-            {variantTotal} variações
-          </div>
-        )}
-        {gen.video_url && (
-          <div className="absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-[4px] bg-foreground/85 px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-background">
-            <Video className="h-3 w-3" />
-            Vídeo
-          </div>
-        )}
-      </div>
-      <div className="flex flex-col gap-1 p-4">
-        <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-          {PIPELINE_LABEL[gen.pipeline_type] ?? gen.pipeline_type}
-        </p>
-        <p className="line-clamp-2 text-sm font-light text-foreground">
-          {gen.prompt?.trim() || "Sem descrição"}
-        </p>
-        <p className="mt-1 text-[11px] font-light text-muted-foreground">
-          {formatDate(gen.created_at)}
-        </p>
-      </div>
+        <div className="flex flex-col gap-1 p-4">
+          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+            {PIPELINE_LABEL[gen.pipeline_type] ?? gen.pipeline_type}
+          </p>
+          <p className="line-clamp-2 text-sm font-light text-foreground">
+            {gen.prompt?.trim() || "Sem descrição"}
+          </p>
+          <p className="mt-1 text-[11px] font-light text-muted-foreground">
+            {formatDate(gen.created_at)}
+          </p>
+        </div>
       </button>
     </div>
   );
@@ -413,11 +409,26 @@ function Card({
 
 function StatusPill({ status }: { status: GenStatus }) {
   const map = {
-    succeeded: { label: "Pronto", icon: CheckCircle2, cls: "bg-emerald-600/90 text-white", spin: false },
+    succeeded: {
+      label: "Pronto",
+      icon: CheckCircle2,
+      cls: "bg-emerald-600/90 text-white",
+      spin: false,
+    },
     queued: { label: "Em fila", icon: Clock, cls: "bg-amber-500/90 text-white", spin: false },
-    processing: { label: "Processando", icon: Loader2, cls: "bg-accent/90 text-accent-foreground", spin: true },
+    processing: {
+      label: "Processando",
+      icon: Loader2,
+      cls: "bg-accent/90 text-accent-foreground",
+      spin: true,
+    },
     failed: { label: "Falhou", icon: AlertTriangle, cls: "bg-red-600/90 text-white", spin: false },
-    cancelled: { label: "Cancelado", icon: X, cls: "bg-muted-foreground/80 text-white", spin: false },
+    cancelled: {
+      label: "Cancelado",
+      icon: X,
+      cls: "bg-muted-foreground/80 text-white",
+      spin: false,
+    },
   } as const;
   const m = map[status];
   const Icon = m.icon;
@@ -455,14 +466,14 @@ function DetailPanel({
     variations.length > 0 && selectedVariant !== null && selectedVariant < variations.length
       ? variations[selectedVariant]
       : null;
-  const thumb =
-    activeVariant?.url ?? gen.thumbnail_url ?? firstSource(gen.source_images);
+  const thumb = activeVariant?.url ?? gen.thumbnail_url ?? firstSource(gen.source_images);
   const renderUrl =
-    activeVariant?.url ?? gen.final_render_url ?? gen.thumbnail_url ?? firstSource(gen.source_images);
+    activeVariant?.url ??
+    gen.final_render_url ??
+    gen.thumbnail_url ??
+    firstSource(gen.source_images);
   const canMakeVideo =
-    gen.status === "succeeded" &&
-    gen.pipeline_type === "floorplan_render" &&
-    !!renderUrl;
+    gen.status === "succeeded" && gen.pipeline_type === "floorplan_render" && !!renderUrl;
 
   function regenerate() {
     onClose();
@@ -517,7 +528,11 @@ function DetailPanel({
           className="aspect-video w-full overflow-hidden rounded-2xl border border-border bg-black"
         />
       ) : gen.status === "succeeded" && gen.glb_url ? (
-        <ModelViewer src={gen.glb_url} poster={thumb ?? undefined} alt={gen.prompt ?? "Modelo 3D"} />
+        <ModelViewer
+          src={gen.glb_url}
+          poster={thumb ?? undefined}
+          alt={gen.prompt ?? "Modelo 3D"}
+        />
       ) : (
         <div className="overflow-hidden rounded-2xl border border-border bg-muted">
           {thumb ? (
@@ -689,7 +704,9 @@ function VariationsPanel({
     if (!v) return;
     setBusy(true);
     const remaining = variations.filter((_, idx) => idx !== i);
-    const originalMeta = (gen.metadata && typeof gen.metadata === "object" ? gen.metadata : {}) as Record<string, unknown>;
+    const originalMeta = (
+      gen.metadata && typeof gen.metadata === "object" ? gen.metadata : {}
+    ) as Record<string, unknown>;
     const { data: created, error: insErr } = await supabase
       .from("generations")
       .insert({
@@ -742,7 +759,9 @@ function VariationsPanel({
               onClick={() => onSelectVariant(active ? null : i)}
               className={
                 "group relative aspect-square overflow-hidden rounded-lg border transition-all " +
-                (active ? "border-accent ring-2 ring-accent/40" : "border-border/60 hover:border-accent/40")
+                (active
+                  ? "border-accent ring-2 ring-accent/40"
+                  : "border-border/60 hover:border-accent/40")
               }
             >
               <FreshImg src={v.url} alt="" className="h-full w-full object-cover" />
@@ -1113,7 +1132,9 @@ function FilterChip({
       <span
         className={
           "rounded-[4px] px-1.5 py-0.5 text-[9px] font-bold " +
-          (active ? "bg-accent-foreground/15 text-accent-foreground" : "bg-muted text-muted-foreground")
+          (active
+            ? "bg-accent-foreground/15 text-accent-foreground"
+            : "bg-muted text-muted-foreground")
         }
       >
         {count}

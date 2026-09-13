@@ -10,12 +10,10 @@ function TransparenciaPage() {
   return (
     <div className="mx-auto max-w-[1100px] space-y-10">
       <header>
-        <h1 className="text-3xl font-black tracking-tight text-foreground">
-          Transparência de IA
-        </h1>
+        <h1 className="text-3xl font-black tracking-tight text-foreground">Transparência de IA</h1>
         <p className="mt-2 max-w-2xl font-light text-muted-foreground">
-          Como o Arq3D Studio usa inteligência artificial: qual credencial autoriza as
-          chamadas e qual modelo roda em cada etapa do pipeline de geração.
+          Como o Arq3D Studio usa inteligência artificial: qual credencial autoriza as chamadas e
+          qual modelo roda em cada etapa do pipeline de geração.
         </p>
       </header>
 
@@ -29,12 +27,10 @@ function TransparenciaPage() {
             <KeyRound className="h-[22px] w-[22px]" strokeWidth={1.75} />
           </div>
           <div className="flex-1">
-            <h2 className="text-xl font-black tracking-tight text-foreground">
-              Credencial usada
-            </h2>
+            <h2 className="text-xl font-black tracking-tight text-foreground">Credencial usada</h2>
             <p className="mt-1 font-light text-muted-foreground">
-              Todas as chamadas de IA passam por um único gateway, autenticado por
-              uma chave gerenciada pela Lovable.
+              Todas as chamadas de IA passam por um único gateway, autenticado por uma chave
+              gerenciada pela Lovable.
             </p>
 
             <dl className="mt-5 grid gap-x-8 gap-y-3 text-sm sm:grid-cols-[180px_1fr]">
@@ -67,13 +63,11 @@ function TransparenciaPage() {
       <section>
         <div className="flex items-center gap-3">
           <Cpu className="h-5 w-5 text-foreground" strokeWidth={1.75} />
-          <h2 className="text-xl font-black tracking-tight text-foreground">
-            Modelos por etapa
-          </h2>
+          <h2 className="text-xl font-black tracking-tight text-foreground">Modelos por etapa</h2>
         </div>
         <p className="mt-2 max-w-2xl font-light text-muted-foreground">
-          Pipeline de render de planta. Cada etapa abaixo identifica o modelo
-          chamado e o arquivo da função no backend.
+          Pipeline de render de planta. Cada etapa abaixo identifica o modelo chamado e o arquivo da
+          função no backend.
         </p>
 
         <div
@@ -129,13 +123,11 @@ function TransparenciaPage() {
             <ShieldCheck className="h-[22px] w-[22px]" strokeWidth={1.75} />
           </div>
           <div className="flex-1">
-            <h2 className="text-xl font-black tracking-tight text-foreground">
-              Garantias
-            </h2>
+            <h2 className="text-xl font-black tracking-tight text-foreground">Garantias</h2>
             <ul className="mt-3 space-y-2 text-sm font-light text-muted-foreground">
               <li>
-                O cliente nunca chama OpenAI ou Google diretamente — toda requisição
-                passa pelo backend autenticado com a{" "}
+                O cliente nunca chama OpenAI ou Google diretamente — toda requisição passa pelo
+                backend autenticado com a{" "}
                 <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-foreground">
                   LOVABLE_API_KEY
                 </code>

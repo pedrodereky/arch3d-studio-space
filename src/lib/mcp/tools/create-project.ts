@@ -34,8 +34,7 @@ export default defineTool({
       })
       .select("id, name, client_name, deadline, briefing, created_at")
       .single();
-    if (error)
-      return { content: [{ type: "text", text: error.message }], isError: true };
+    if (error) return { content: [{ type: "text", text: error.message }], isError: true };
     return {
       content: [{ type: "text", text: JSON.stringify(data) }],
       structuredContent: { project: data },

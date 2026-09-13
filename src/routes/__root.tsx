@@ -48,11 +48,31 @@ export const Route = createRootRoute({
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
       { name: "twitter:title", content: "Arq3D Studio — Da referência ao 3D em 60 segundos" },
-      { name: "description", content: "Arq3D Studio generates 3D models from text or 2D images, offering realistic textures and furniture." },
-      { property: "og:description", content: "Arq3D Studio generates 3D models from text or 2D images, offering realistic textures and furniture." },
-      { name: "twitter:description", content: "Arq3D Studio generates 3D models from text or 2D images, offering realistic textures and furniture." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/7605fd76-cdcf-4093-bc2c-0c618489faae/id-preview-c1fd17f7--853a096e-caff-4593-84be-13443c2bc0f7.lovable.app-1778102748099.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/7605fd76-cdcf-4093-bc2c-0c618489faae/id-preview-c1fd17f7--853a096e-caff-4593-84be-13443c2bc0f7.lovable.app-1778102748099.png" },
+      {
+        name: "description",
+        content:
+          "Arq3D Studio generates 3D models from text or 2D images, offering realistic textures and furniture.",
+      },
+      {
+        property: "og:description",
+        content:
+          "Arq3D Studio generates 3D models from text or 2D images, offering realistic textures and furniture.",
+      },
+      {
+        name: "twitter:description",
+        content:
+          "Arq3D Studio generates 3D models from text or 2D images, offering realistic textures and furniture.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/7605fd76-cdcf-4093-bc2c-0c618489faae/id-preview-c1fd17f7--853a096e-caff-4593-84be-13443c2bc0f7.lovable.app-1778102748099.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/7605fd76-cdcf-4093-bc2c-0c618489faae/id-preview-c1fd17f7--853a096e-caff-4593-84be-13443c2bc0f7.lovable.app-1778102748099.png",
+      },
     ],
     links: [{ rel: "stylesheet", href: appCss }],
   }),

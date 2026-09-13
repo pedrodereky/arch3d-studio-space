@@ -12,8 +12,7 @@ type Props = {
   hdri?: string;
 };
 
-const DEFAULT_HDRI =
-  "https://modelviewer.dev/shared-assets/environments/spruit_sunrise_1k_HDR.hdr";
+const DEFAULT_HDRI = "https://modelviewer.dev/shared-assets/environments/spruit_sunrise_1k_HDR.hdr";
 
 export function ModelViewer({
   src,
@@ -75,10 +74,12 @@ export function ModelViewer({
   }, [src]);
 
   function reset() {
-    const el = ref.current as (HTMLElement & {
-      resetTurntableRotation?: () => void;
-      cameraOrbit?: string;
-    }) | null;
+    const el = ref.current as
+      | (HTMLElement & {
+          resetTurntableRotation?: () => void;
+          cameraOrbit?: string;
+        })
+      | null;
     if (!el) return;
     el.resetTurntableRotation?.();
     el.setAttribute("camera-orbit", "0deg 75deg 105%");
@@ -113,7 +114,11 @@ export function ModelViewer({
       {failed && (
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-muted p-6 text-center">
           {freshPoster ? (
-            <img src={freshPoster} alt="" className="absolute inset-0 h-full w-full object-cover opacity-30" />
+            <img
+              src={freshPoster}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover opacity-30"
+            />
           ) : null}
           <AlertTriangle className="relative h-6 w-6 text-muted-foreground" />
           <p className="relative text-sm font-light text-muted-foreground">

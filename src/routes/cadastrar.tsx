@@ -87,8 +87,23 @@ function SignupPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <Field name="full_name" label="Nome completo" required value={fullName} onChange={setFullName} autoComplete="name" />
-            <Field name="email" label="E-mail" type="email" required value={email} onChange={setEmail} autoComplete="email" />
+            <Field
+              name="full_name"
+              label="Nome completo"
+              required
+              value={fullName}
+              onChange={setFullName}
+              autoComplete="name"
+            />
+            <Field
+              name="email"
+              label="E-mail"
+              type="email"
+              required
+              value={email}
+              onChange={setEmail}
+              autoComplete="email"
+            />
             <Field
               name="password"
               label="Senha"
@@ -101,7 +116,13 @@ function SignupPage() {
             />
             <div className="grid grid-cols-2 gap-4">
               <Field name="cau" label="CAU (opcional)" value={cau} onChange={setCau} />
-              <Field name="office" label="Escritório (opcional)" value={office} onChange={setOffice} autoComplete="organization" />
+              <Field
+                name="office"
+                label="Escritório (opcional)"
+                value={office}
+                onChange={setOffice}
+                autoComplete="organization"
+              />
             </div>
             <button
               type="submit"
@@ -115,7 +136,11 @@ function SignupPage() {
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
             Já tem conta?{" "}
-            <Link to="/entrar" search={{ redirect: "/app" }} className="font-medium text-foreground hover:underline">
+            <Link
+              to="/entrar"
+              search={{ redirect: "/app" }}
+              className="font-medium text-foreground hover:underline"
+            >
               Entrar
             </Link>
           </p>

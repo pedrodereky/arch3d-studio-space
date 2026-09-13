@@ -2,21 +2,24 @@
 // Retorna JSON validado pronto para o builder procedural.
 
 export type Wall = {
-  x1: number; y1: number; x2: number; y2: number;
-  thickness_m: number; height_m: number;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  thickness_m: number;
+  height_m: number;
 };
 
 export type Opening = {
   wall_idx: number;
-  offset_m: number;   // distância ao longo da parede a partir de (x1,y1)
+  offset_m: number; // distância ao longo da parede a partir de (x1,y1)
   width_m: number;
   height_m: number;
-  sill_m: number;     // 0 = porta; >0 = janela (altura do peitoril)
+  sill_m: number; // 0 = porta; >0 = janela (altura do peitoril)
   kind: "door" | "window";
 };
 
-export type WallFinish =
-  | "painted_white" | "painted_warm" | "wood_panel" | "exposed_brick";
+export type WallFinish = "painted_white" | "painted_warm" | "wood_panel" | "exposed_brick";
 
 export type Room = {
   polygon: Array<[number, number]>;
@@ -28,14 +31,30 @@ export type Room = {
 export type Style = "modern" | "scandi" | "industrial" | "classic" | "minimal";
 
 export type FurnitureType =
-  | "sofa" | "armchair" | "chair" | "bed_double" | "bed_single"
-  | "table_dining" | "table_coffee" | "desk" | "wardrobe" | "tv"
-  | "toilet" | "sink" | "bathtub" | "shower" | "stove" | "fridge"
-  | "kitchen_counter" | "lamp" | "plant";
+  | "sofa"
+  | "armchair"
+  | "chair"
+  | "bed_double"
+  | "bed_single"
+  | "table_dining"
+  | "table_coffee"
+  | "desk"
+  | "wardrobe"
+  | "tv"
+  | "toilet"
+  | "sink"
+  | "bathtub"
+  | "shower"
+  | "stove"
+  | "fridge"
+  | "kitchen_counter"
+  | "lamp"
+  | "plant";
 
 export type Furniture = {
   type: FurnitureType;
-  x: number; y: number;
+  x: number;
+  y: number;
   rotation_deg: number;
   width_m: number;
   depth_m: number;
@@ -53,7 +72,8 @@ export type Blueprint = {
 
 const FUNCTION_SCHEMA = {
   name: "submit_blueprint",
-  description: "Submit the structured blueprint extracted from the floor plan image. All measurements in meters. Coordinate origin at top-left, +x right, +y down.",
+  description:
+    "Submit the structured blueprint extracted from the floor plan image. All measurements in meters. Coordinate origin at top-left, +x right, +y down.",
   parameters: {
     type: "OBJECT",
     properties: {
@@ -69,16 +89,20 @@ const FUNCTION_SCHEMA = {
       style: {
         type: "STRING",
         enum: ["modern", "scandi", "industrial", "classic", "minimal"],
-        description: "Overall interior design style inferred from the plan layout and any visible cues. Default to 'modern'.",
+        description:
+          "Overall interior design style inferred from the plan layout and any visible cues. Default to 'modern'.",
       },
       walls: {
         type: "ARRAY",
-        description: "Wall segments. Each segment is a straight wall from (x1,y1) to (x2,y2). Walls should form closed rooms when combined. Default thickness 0.15m, default height 2.7m.",
+        description:
+          "Wall segments. Each segment is a straight wall from (x1,y1) to (x2,y2). Walls should form closed rooms when combined. Default thickness 0.15m, default height 2.7m.",
         items: {
           type: "OBJECT",
           properties: {
-            x1: { type: "NUMBER" }, y1: { type: "NUMBER" },
-            x2: { type: "NUMBER" }, y2: { type: "NUMBER" },
+            x1: { type: "NUMBER" },
+            y1: { type: "NUMBER" },
+            x2: { type: "NUMBER" },
+            y2: { type: "NUMBER" },
             thickness_m: { type: "NUMBER" },
             height_m: { type: "NUMBER" },
           },
@@ -87,7 +111,8 @@ const FUNCTION_SCHEMA = {
       },
       openings: {
         type: "ARRAY",
-        description: "Doors and windows. wall_idx references the walls array. offset_m is distance from wall start along the wall direction. sill_m=0 for doors, ~0.9 for windows.",
+        description:
+          "Doors and windows. wall_idx references the walls array. offset_m is distance from wall start along the wall direction. sill_m=0 for doors, ~0.9 for windows.",
         items: {
           type: "OBJECT",
           properties: {
@@ -103,7 +128,8 @@ const FUNCTION_SCHEMA = {
       },
       rooms: {
         type: "ARRAY",
-        description: "Closed room polygons (interior floor area), as ordered [x,y] points in meters.",
+        description:
+          "Closed room polygons (interior floor area), as ordered [x,y] points in meters.",
         items: {
           type: "OBJECT",
           properties: {
@@ -116,33 +142,54 @@ const FUNCTION_SCHEMA = {
             },
             label: { type: "STRING" },
             floor_material: { type: "STRING", enum: ["wood", "tile", "carpet", "concrete"] },
-            wall_finish: { type: "STRING", enum: ["painted_white", "painted_warm", "wood_panel", "exposed_brick"] },
+            wall_finish: {
+              type: "STRING",
+              enum: ["painted_white", "painted_warm", "wood_panel", "exposed_brick"],
+            },
           },
           required: ["polygon", "label", "floor_material", "wall_finish"],
         },
       },
       furniture: {
         type: "ARRAY",
-        description: "Furniture items detected in the plan. Position (x,y) is the CENTER of the item in meters. rotation_deg is clockwise from north (0 = facing +y).",
+        description:
+          "Furniture items detected in the plan. Position (x,y) is the CENTER of the item in meters. rotation_deg is clockwise from north (0 = facing +y).",
         items: {
           type: "OBJECT",
           properties: {
             type: {
               type: "STRING",
               enum: [
-                "sofa", "armchair", "chair", "bed_double", "bed_single",
-                "table_dining", "table_coffee", "desk", "wardrobe", "tv",
-                "toilet", "sink", "bathtub", "shower", "stove", "fridge",
-                "kitchen_counter", "lamp", "plant",
+                "sofa",
+                "armchair",
+                "chair",
+                "bed_double",
+                "bed_single",
+                "table_dining",
+                "table_coffee",
+                "desk",
+                "wardrobe",
+                "tv",
+                "toilet",
+                "sink",
+                "bathtub",
+                "shower",
+                "stove",
+                "fridge",
+                "kitchen_counter",
+                "lamp",
+                "plant",
               ],
             },
-            x: { type: "NUMBER" }, y: { type: "NUMBER" },
+            x: { type: "NUMBER" },
+            y: { type: "NUMBER" },
             rotation_deg: { type: "NUMBER" },
             width_m: { type: "NUMBER" },
             depth_m: { type: "NUMBER" },
             prompt: {
               type: "STRING",
-              description: "Detailed English text-to-3D prompt describing this specific furniture item. Include style, material, color, finish. Always end with: 'photorealistic, single object, isolated, white background, neutral lighting'. Example: 'a modern 3-seat fabric sofa, beige linen upholstery, wooden legs, scandinavian style, photorealistic, single object, isolated, white background, neutral lighting'.",
+              description:
+                "Detailed English text-to-3D prompt describing this specific furniture item. Include style, material, color, finish. Always end with: 'photorealistic, single object, isolated, white background, neutral lighting'. Example: 'a modern 3-seat fabric sofa, beige linen upholstery, wooden legs, scandinavian style, photorealistic, single object, isolated, white background, neutral lighting'.",
             },
           },
           required: ["type", "x", "y", "rotation_deg", "width_m", "depth_m", "prompt"],
@@ -230,7 +277,8 @@ function validateBlueprint(raw: unknown): Blueprint {
     if (!r.floor_material) r.floor_material = "wood";
   }
   for (const f of bp.furniture) {
-    if (!f.prompt) f.prompt = `a ${f.type}, photorealistic, single object, isolated, white background, neutral lighting`;
+    if (!f.prompt)
+      f.prompt = `a ${f.type}, photorealistic, single object, isolated, white background, neutral lighting`;
   }
   return bp;
 }

@@ -60,7 +60,9 @@ export function PipelinesSection() {
                 <p.icon className="h-[22px] w-[22px]" strokeWidth={1.75} />
               </div>
               <h3 className="mt-5 text-lg font-bold text-foreground">{p.title}</h3>
-              <p className="mt-2 flex-1 text-sm font-light text-muted-foreground">{p.description}</p>
+              <p className="mt-2 flex-1 text-sm font-light text-muted-foreground">
+                {p.description}
+              </p>
             </article>
           ))}
         </div>

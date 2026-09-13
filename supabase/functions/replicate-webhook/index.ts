@@ -40,7 +40,9 @@ async function downloadToOutputs(
 async function verifyReplicateSignature(req: Request, rawBody: string): Promise<boolean> {
   const secret = Deno.env.get("REPLICATE_WEBHOOK_SECRET");
   if (!secret) {
-    console.error("REPLICATE_WEBHOOK_SECRET ausente — webhook rejeitado. Configure o secret nas edge functions.");
+    console.error(
+      "REPLICATE_WEBHOOK_SECRET ausente — webhook rejeitado. Configure o secret nas edge functions.",
+    );
     return false;
   }
   const id = req.headers.get("webhook-id");
@@ -113,7 +115,11 @@ Deno.serve(async (req) => {
       if (!videoUrl) {
         await admin
           .from("generations")
-          .update({ status: "failed", error_message: "Vídeo ausente no output", completed_at: new Date().toISOString() })
+          .update({
+            status: "failed",
+            error_message: "Vídeo ausente no output",
+            completed_at: new Date().toISOString(),
+          })
           .eq("id", gen.id);
         return new Response("ok");
       }
@@ -126,7 +132,7 @@ Deno.serve(async (req) => {
         "walkthrough.mp4",
         "video/mp4",
       );
-      const cost = 0.50;
+      const cost = 0.5;
       await admin
         .from("generations")
         .update({
@@ -183,7 +189,7 @@ Deno.serve(async (req) => {
 
     // Custo aproximado: Hunyuan3D 2.1 ≈ $0.05, 3.1 ≈ $0.10
     const engine = (gen as { engine?: string }).engine ?? "hunyuan_2_1";
-    const cost = engine === "hunyuan_3_1" ? 0.10 : 0.05;
+    const cost = engine === "hunyuan_3_1" ? 0.1 : 0.05;
 
     // Pipeline 4: compõe render da cena com gpt-image-2 via Replicate (best-effort)
     let finalRenderUrl: string | null = null;

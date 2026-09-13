@@ -153,10 +153,7 @@ export type ControlNetParams = {
   height?: number;
 };
 
-export async function runControlNetSegRoom(
-  token: string,
-  p: ControlNetParams,
-): Promise<string> {
+export async function runControlNetSegRoom(token: string, p: ControlNetParams): Promise<string> {
   // adirik/interior-design: image + prompt + negative_prompt → imagem
   // redecorada preservando geometria (MLSD ControlNet interno).
   const keepLayout = !!(p.conditioningScale && p.conditioningScale >= 1.1);
