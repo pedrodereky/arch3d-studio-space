@@ -1,0 +1,17 @@
+{
+  "artboards": [
+    { "file": "LoginA.dc.html", "x": 0,    "y": 0,    "w": 1440, "h": 900, "title": "A — Login" },
+    { "file": "LoginB.dc.html", "x": 1560, "y": 0,    "w": 1440, "h": 900, "title": "B — Login" },
+    { "file": "LoginC.dc.html", "x": 3120, "y": 0,    "w": 1440, "h": 900, "title": "C — Login" },
+    { "file": "Main.dc.html",   "x": 0,    "y": 1060, "w": 1440, "h": 900, "title": "A — Área interna" },
+    { "file": "AppB.dc.html",   "x": 1560, "y": 1060, "w": 1440, "h": 900, "title": "B — Área interna" },
+    { "file": "AppC.dc.html",   "x": 3120, "y": 1060, "w": 1440, "h": 900, "title": "C — Área interna" }
+  ],
+  "annotations": [
+    { "id": "dir-a", "x": 0, "y": -150, "w": 1440, "text": "DIREÇÃO A — Ateliê\nChrome claro, respiro editorial, o trabalho como herói. A navegação fica legível o tempo todo (rótulos sempre visíveis) e os números viram tipografia, não caixinhas.\nTroca: é a que mostra menos informação por tela — quem vive de comparar métricas vai clicar mais." },
+    { "id": "dir-b", "x": 1560, "y": -150, "w": 1440, "text": "DIREÇÃO B — Painel\nMantém o DNA atual (sidebar navy) e organiza: KPIs, atalhos, fila de processamento e últimas gerações numa grade só.\nTroca: densa. É a mais informativa e a menos calma — e a que menos assusta quem já usa o produto hoje." },
+    { "id": "dir-c", "x": 3120, "y": -150, "w": 1440, "text": "DIREÇÃO C — Estúdio\nWorkspace escuro: controles à esquerda, resultado ocupando a tela. Pensado para sessões longas de produção, não para consultar status.\nTroca: exige uma tela de visão geral separada — esta é a tela de trabalho, não a home." },
+    { "id": "nota-base", "x": 0, "y": 2010, "w": 1440, "text": "Todas as três usam os tokens reais do produto: navy #02162A, azul #0A4F95, azul claro #E8F0FB, fundo #F9F9F9, raios 4/8/12/20/32 e a sombra de card do design system. A fonte no navegador é Mulish (substituta do Avenir LT Std, que não existe no Google Fonts) — no app real o Avenir continua carregando." }
+  ],
+  "launch": { "view": "canvas" }
+}
