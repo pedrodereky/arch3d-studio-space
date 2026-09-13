@@ -30,4 +30,7 @@ export const qk = {
   studioRuns: (userId: string | undefined) => ["studio-runs", userId] as const,
 
   sharedProject: (token: string) => ["shared-project", token] as const,
+
+  globalSearch: (userId: string | undefined, term: string) =>
+    ["global-search", userId, term] as const,
 } as const;
