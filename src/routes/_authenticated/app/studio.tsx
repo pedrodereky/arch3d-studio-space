@@ -349,25 +349,22 @@ function StudioInner() {
     })();
   }, [user, fromGeneration, nodes.length, setNodes]);
 
+  // Salvar na biblioteca é a única publicação direta do nó. "Gerar 3D da cena"
+  // saiu junto com o pipeline scene_to_3d, que o orchestrate descontinuou.
   const publishNode = useCallback(
-    async (nodeId: string, action: "save_only" | "scene_to_3d") => {
+    async (nodeId: string) => {
       if (!runId) {
         toast.error("Salve e execute o fluxo antes");
         return;
       }
-      setPublishingAction(action);
+      setPublishingAction("save_only");
       try {
         const { data, error } = await supabase.functions.invoke("studio-publish", {
-          body: { runId, nodeId, action },
+          body: { runId, nodeId, action: "save_only" },
         });
         if (error) throw error;
         if (!data?.ok) throw new Error(data?.error ?? "falha");
-        toast.success(action === "save_only" ? "Salvo na biblioteca" : "3D em geração", {
-          description:
-            action === "save_only"
-              ? "Aparece em /app/biblioteca."
-              : "Você verá o resultado na biblioteca em alguns minutos.",
-        });
+        toast.success("Salvo na biblioteca", { description: "Aparece em /app/biblioteca." });
       } catch (e) {
         toast.error("Falha", { description: e instanceof Error ? e.message : "?" });
       } finally {
@@ -1458,7 +1455,7 @@ function StudioInner() {
                       variant="outline"
                       size="sm"
                       className="justify-start"
-                      onClick={() => publishNode(selectedNode.id, "save_only")}
+                      onClick={() => publishNode(selectedNode.id)}
                       disabled={publishingAction !== null || !runId}
                     >
                       {publishingAction === "save_only" ? (
@@ -1467,20 +1464,6 @@ function StudioInner() {
                         <LibraryIcon className="mr-2 h-3 w-3" />
                       )}
                       Salvar na biblioteca
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="justify-start"
-                      onClick={() => publishNode(selectedNode.id, "scene_to_3d")}
-                      disabled={publishingAction !== null || !runId}
-                    >
-                      {publishingAction === "scene_to_3d" ? (
-                        <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                      ) : (
-                        <Layers className="mr-2 h-3 w-3" />
-                      )}
-                      Gerar 3D da cena
                     </Button>
                     <Button
                       variant="outline"
