@@ -39,6 +39,7 @@ import {
 
 import { supabase } from "@/integrations/supabase/client";
 import { qk } from "@/lib/query-keys";
+import { useStudioNodeCost, formatUsd } from "@/lib/pipeline-costs";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
@@ -1151,6 +1152,12 @@ function StudioInner() {
     return { reusable, total: nodes.length };
   }, [nodes, edges, lastRunResults]);
 
+  const { data: nodeCost } = useStudioNodeCost(user?.id);
+
+  // O que vai ser cobrado é o que vai ser processado — não o fluxo inteiro.
+  const toProcess = Math.max(reuse.total - reuse.reusable, 0);
+  const estimate = nodeCost && toProcess > 0 ? nodeCost.median * toProcess : null;
+
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-background">
       {/* Toolbar */}
@@ -1600,13 +1607,30 @@ function StudioInner() {
               </div>
             )}
             <div className="flex items-baseline justify-between gap-3">
-              <span className="text-[12px] font-light text-muted-foreground">
-                Custo da última execução
+              <span className="min-w-0 text-[12px] font-light text-muted-foreground">
+                Custo estimado
+                {estimate !== null && (
+                  <span className="ml-1.5 text-[11px] opacity-70">
+                    ({toProcess} {toProcess === 1 ? "nó" : "nós"})
+                  </span>
+                )}
               </span>
-              <span className="text-[13px] font-semibold text-foreground">
-                {lastRunCost === null ? "—" : `$ ${lastRunCost.toFixed(2).replace(".", ",")}`}
+              <span className="shrink-0 text-[13px] font-semibold text-foreground">
+                {formatUsd(estimate)}
               </span>
             </div>
+            <div className="mt-2 flex items-baseline justify-between gap-3">
+              <span className="text-[12px] font-light text-muted-foreground">Última execução</span>
+              <span className="shrink-0 text-[12px] font-light text-muted-foreground">
+                {formatUsd(lastRunCost)}
+              </span>
+            </div>
+            {estimate === null && reuse.total > 0 && (
+              <p className="mt-2.5 text-[11px] font-light leading-relaxed text-muted-foreground">
+                A estimativa aparece depois da primeira execução concluída — ela é medida do que
+                você já pagou por nó, não tabelada.
+              </p>
+            )}
           </div>
         </aside>
       </div>
