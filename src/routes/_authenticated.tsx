@@ -7,28 +7,12 @@ import {
   useLocation,
   useMatches,
 } from "@tanstack/react-router";
-import {
-  Loader2,
-  Home,
-  Library,
-  FolderOpen,
-  User,
-  LogOut,
-  Shield,
-  Box,
-  Map,
-  ShieldCheck,
-  Video,
-  Workflow,
-  Wand2,
-  Type,
-  ImageUp,
-  Menu,
-  Plus,
-} from "lucide-react";
+import { Loader2, User, LogOut, Shield, Menu, Plus, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import "@/lib/route-static-data";
+import { navSections, adminItems, isActive, currentLabel, type NavLeaf } from "@/lib/nav-items";
+import { GlobalSearch } from "@/components/search/GlobalSearch";
 import { Wordmark } from "@/components/brand/Wordmark";
 import { GenerationNotifier } from "@/components/notifications/GenerationNotifier";
 import {
@@ -45,64 +29,13 @@ export const Route = createFileRoute("/_authenticated")({
   component: AuthenticatedLayout,
 });
 
-type NavLeaf = { to: string; label: string; icon: typeof Home; exact?: boolean };
-type NavSection = { label?: string; items: NavLeaf[] };
-
-/**
- * Seções planas, sem grupo colapsável: a navegação tem a mesma forma em toda
- * tela e só o item ativo muda. O acordeão anterior reorganizava a lista
- * conforme a rota, que é o oposto de previsível.
- */
-const navSections: NavSection[] = [
-  { items: [{ to: "/app", label: "Dashboard", icon: Home, exact: true }] },
-  {
-    label: "Gerar",
-    items: [
-      { to: "/app/gerar", label: "Objetos 3D", icon: Box, exact: true },
-      { to: "/app/gerar/redecorar", label: "Redecorar", icon: Wand2 },
-      { to: "/app/gerar/briefing", label: "Briefing → Planta 2D", icon: Type },
-      { to: "/app/gerar/analise", label: "Análise de planta", icon: ImageUp },
-      { to: "/app/gerar/planta", label: "Render de planta", icon: Map },
-      { to: "/app/gerar/video", label: "Vídeo POV", icon: Video },
-    ],
-  },
-  {
-    items: [
-      { to: "/app/studio", label: "Studio", icon: Workflow },
-      { to: "/app/biblioteca", label: "Biblioteca", icon: Library },
-      { to: "/app/projetos", label: "Projetos", icon: FolderOpen },
-      { to: "/app/transparencia", label: "Transparência IA", icon: ShieldCheck },
-      { to: "/app/conta", label: "Conta", icon: User },
-    ],
-  },
-];
-
-const adminItems: NavLeaf[] = [
-  { to: "/admin/configuracoes", label: "Configurações", icon: Shield },
-  { to: "/admin/uso", label: "Uso", icon: Shield },
-  { to: "/admin/usuarios", label: "Usuários", icon: Shield },
-  { to: "/admin/diagnostico", label: "Diagnóstico", icon: Shield },
-];
-
-const isActive = (item: NavLeaf, pathname: string) =>
-  item.exact ? pathname === item.to : pathname.startsWith(item.to);
-
-/** Rótulo da tela atual, para o header não ficar sem contexto. */
-function currentLabel(pathname: string): string {
-  const all = [...navSections.flatMap((s) => s.items), ...adminItems];
-  // Do mais específico para o mais genérico, senão "/app" casaria com tudo.
-  const match = [...all]
-    .sort((a, b) => b.to.length - a.to.length)
-    .find((item) => isActive(item, pathname));
-  return match?.label ?? "Arq3D Studio";
-}
-
 function AuthenticatedLayout() {
   const { user, profile, isLoading, isAdmin, setupCompleted, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const matches = useMatches();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   // Telas com trilho lateral pedem o `main` sem padding; elas mesmas dizem.
   const fullBleed = matches.some((m) => m.staticData?.fullBleed);
@@ -111,6 +44,18 @@ function AuthenticatedLayout() {
   useEffect(() => {
     setMenuOpen(false);
   }, [location.pathname]);
+
+  // ⌘K / Ctrl+K de qualquer lugar, inclusive de dentro de um campo de texto:
+  // a combinação com modificador não colide com digitação.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() !== "k" || !(e.metaKey || e.ctrlKey)) return;
+      e.preventDefault();
+      setSearchOpen((v) => !v);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   if (isLoading) {
     return (
@@ -220,9 +165,22 @@ function AuthenticatedLayout() {
             {currentLabel(location.pathname)}
           </span>
 
+          <button
+            type="button"
+            onClick={() => setSearchOpen(true)}
+            className="ml-auto flex h-10 items-center gap-2.5 rounded-full border border-border/60 bg-card px-3.5 text-muted-foreground transition-colors hover:text-foreground md:w-64 md:px-4"
+            aria-label="Buscar"
+          >
+            <Search className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+            <span className="hidden flex-1 text-left text-[13px] font-light md:inline">Buscar</span>
+            <kbd className="hidden shrink-0 rounded border border-border/60 px-1.5 py-0.5 font-sans text-[10px] font-medium md:inline">
+              ⌘K
+            </kbd>
+          </button>
+
           <Link
             to="/app/gerar"
-            className="ml-auto inline-flex h-11 shrink-0 items-center gap-2 rounded-full bg-primary px-5 text-[11px] font-black uppercase tracking-[0.12em] text-primary-foreground transition-colors hover:bg-primary/90 md:px-6"
+            className="inline-flex h-11 shrink-0 items-center gap-2 rounded-full bg-primary px-5 text-[11px] font-black uppercase tracking-[0.12em] text-primary-foreground transition-colors hover:bg-primary/90 md:px-6"
           >
             <Plus className="h-4 w-4" strokeWidth={2} />
             <span className="hidden sm:inline">Gerar</span>
@@ -232,6 +190,7 @@ function AuthenticatedLayout() {
           <Outlet />
         </main>
       </div>
+      <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} isAdmin={isAdmin} />
       <GenerationNotifier />
     </div>
   );
