@@ -20,7 +20,7 @@ import {
   type NavLeaf,
 } from "@/lib/nav-items";
 import { GlobalSearch } from "@/components/search/GlobalSearch";
-import { Wordmark } from "@/components/brand/Wordmark";
+import { BrandLockup } from "@/components/brand/Mark";
 import { GenerationNotifier } from "@/components/notifications/GenerationNotifier";
 import {
   DropdownMenu,
@@ -138,7 +138,7 @@ function AuthenticatedLayout() {
       {/* Sidebar — desktop */}
       <aside className="hidden w-[244px] shrink-0 flex-col border-r border-border/60 bg-card md:flex">
         <div className="flex h-[76px] items-center border-b border-border/60 px-6">
-          <Wordmark className="text-primary" />
+          <BrandLockup />
         </div>
         <SidebarNav pathname={location.pathname} isAdmin={isAdmin} />
         <div className="border-t border-border/60 p-3">{userMenu}</div>
@@ -158,7 +158,7 @@ function AuthenticatedLayout() {
             <SheetContent side="left" className="flex w-72 flex-col border-border/60 bg-card p-0">
               <SheetTitle className="sr-only">Navegação</SheetTitle>
               <div className="flex h-[76px] shrink-0 items-center border-b border-border/60 px-6">
-                <Wordmark className="text-primary" />
+                <BrandLockup />
               </div>
               <SidebarNav
                 pathname={location.pathname}
@@ -170,7 +170,7 @@ function AuthenticatedLayout() {
           </Sheet>
 
           <div className="md:hidden">
-            <Wordmark className="text-primary" />
+            <BrandLockup />
           </div>
 
           <span className="hidden text-sm font-medium text-foreground md:inline">
