@@ -34,20 +34,31 @@ function inventory() {
   return { tables, enums, functions };
 }
 
-function resolveTarget(arg) {
-  if (arg) return arg;
-  const files = readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith(".sql"));
+/**
+ * O schema mora na união dos arquivos, não no último.
+ *
+ * Antes isto pegava `files.sort().at(-1)` — a migração mais recente. Bastou
+ * existir uma migração escrita à mão (o agendamento do pg_cron) para o script
+ * conferir o inventário contra ELA e relatar "dump incompleto", como se o
+ * `supabase db pull` tivesse falhado. O dump e as migrações posteriores
+ * juntos é que descrevem o banco.
+ */
+function resolveTargets(arg) {
+  if (arg) return [arg];
+  const files = readdirSync(MIGRATIONS_DIR)
+    .filter((f) => f.endsWith(".sql"))
+    .sort();
   if (files.length === 0) {
     console.error(
       `Nenhum .sql em ${MIGRATIONS_DIR}/. Rode \`supabase db pull\` primeiro — ver supabase/README.md.`,
     );
     process.exit(1);
   }
-  return join(MIGRATIONS_DIR, files.sort().at(-1));
+  return files.map((f) => join(MIGRATIONS_DIR, f));
 }
 
-const target = resolveTarget(process.argv[2]);
-const sql = readFileSync(target, "utf8");
+const targets = resolveTargets(process.argv[2]);
+const sql = targets.map((t) => readFileSync(t, "utf8")).join("\n");
 const { tables, enums, functions } = inventory();
 
 const missing = {
@@ -59,7 +70,9 @@ const missing = {
 const policies = (sql.match(/CREATE POLICY/gi) ?? []).length;
 const rlsEnabled = (sql.match(/ENABLE ROW LEVEL SECURITY/gi) ?? []).length;
 
-console.log(`Conferindo ${target}\n`);
+console.log(`Conferindo ${targets.length} arquivo(s) em ${MIGRATIONS_DIR}/:`);
+for (const t of targets) console.log(`  · ${t}`);
+console.log("");
 console.log(`  tabelas esperadas:  ${tables.length}`);
 console.log(`  enums esperados:    ${enums.length}`);
 console.log(`  funções esperadas:  ${functions.length}`);
