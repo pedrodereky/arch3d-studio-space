@@ -910,6 +910,7 @@ async function processGeneration(generationId: string): Promise<void> {
 }
 
 import { getUserId } from "../_shared/auth.ts";
+import { checkUserBudget } from "../_shared/spend-guard.ts";
 
 Deno.serve((req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -943,6 +944,17 @@ Deno.serve((req) => {
       if (gen.user_id !== callerId) {
         return new Response(JSON.stringify({ error: "Acesso negado" }), {
           status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const budget = await checkUserBudget(admin, callerId);
+      if (!budget.allowed) {
+        await admin
+          .from("generations")
+          .update({ status: "failed", error_message: budget.reason })
+          .eq("id", generationId);
+        return new Response(JSON.stringify({ error: budget.reason }), {
+          status: 429,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
