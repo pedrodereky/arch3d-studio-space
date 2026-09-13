@@ -126,24 +126,59 @@ essa chamada interna.
 
 ## Cron de gerações travadas
 
-A rota `/api/cron/stuck-generations` (em `src/routes/api/cron/`) chama
-`mark_stuck_generations_failed`. Ela existe mas **não se agenda sozinha**.
+Sem agendamento, uma geração que morre no meio do pipeline fica em
+`processing` para sempre na biblioteca do usuário. Há dois caminhos.
 
-Na Lovable o agendador se chama **Jobs**, e é criado dentro do produto — não
-por arquivo neste repositório. Duas formas:
+### 1. No banco, por migração (recomendado)
 
-- Pedir no chat do projeto, por exemplo: _"Agende um job que chame
+`supabase/migrations/20260913183000_schedule_stuck_generations.sql` agenda
+`mark_stuck_generations_failed()` com `pg_cron`, de hora em hora. Aplicar:
+
+```bash
+supabase db push
+```
+
+É o caminho mais curto porque a rota HTTP não acrescenta nada: ela só chama
+essa mesma função. Agendar no banco dispensa o app no ar, a URL pública e o
+segredo viajando a cada chamada.
+
+**Requisito:** a extensão `pg_cron` habilitada no projeto. A migração tenta
+`create extension if not exists pg_cron`; se o papel que aplica não tiver
+direito, habilite em **Database → Extensions** no painel do Supabase e aplique
+de novo.
+
+Conferir depois:
+
+```sql
+select jobname, schedule, active from cron.job where jobname = 'mark-stuck-generations';
+select status, start_time from cron.job_run_details
+ where jobid = (select jobid from cron.job where jobname = 'mark-stuck-generations')
+ order by start_time desc limit 5;
+```
+
+A migração é idempotente: remove o job antes de recriar, então aplicá-la duas
+vezes (ou mudar a periodicidade) não deixa dois jobs girando.
+
+### 2. Pela Lovable (Jobs)
+
+A rota `/api/cron/stuck-generations` (em `src/routes/api/cron/`) continua
+existindo, útil para disparo manual e para quem preferir agendar pelo produto.
+Na Lovable o agendador se chama **Jobs**, criado dentro do produto — não por
+arquivo neste repositório:
+
+- Pedir no chat do projeto: _"Agende um job que chame
   `/api/cron/stuck-generations` de hora em hora."_
-- Ou conferir e gerenciar em **Cloud → Jobs**, onde cada job aparece com o
-  horário em texto ("A cada hora", "Todo dia às 08:00").
+- Ou gerenciar em **Cloud → Jobs**, onde cada job aparece com o horário em
+  texto ("A cada hora", "Todo dia às 08:00").
 
 A autenticação já está pronta dos dois lados: a rota valida o header
 `Authorization: Bearer $LOVABLE_CRON_SECRET` via `authenticateCronRequest`
-(`src/integrations/supabase/cron-auth.ts`, gerado pela própria Lovable). De
-hora em hora ou diário, tanto faz — a rota é idempotente.
+(`src/integrations/supabase/cron-auth.ts`, gerado pela própria Lovable). Uma
+chamada sem o header devolve 401; uma bem-sucedida responde
+`{"ok":true,"markedFailed":N}`.
 
-Para conferir depois de agendar: uma chamada sem o header devolve 401, e uma
-bem-sucedida responde `{"ok":true,"markedFailed":N}`.
+### Os dois juntos
 
-Sem esse agendamento, uma geração que morre no meio do pipeline fica em
-`processing` para sempre na biblioteca do usuário.
+Não há problema: a função é idempotente, então rodar duas vezes na mesma hora
+não causa efeito extra. Mas escolha um para não ficar em dúvida sobre quem
+está agendando o quê.
