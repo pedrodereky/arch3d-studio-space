@@ -1,0 +1,148 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mulish:wght@300;400;600;900&display=swap">
+  <style>
+    body { margin:0; font-family:'Avenir LT Std','Avenir Next',Avenir,'Mulish','Helvetica Neue',sans-serif; -webkit-font-smoothing:antialiased; }
+    a { color:#0A4F95; text-decoration:none; } a:hover { color:#02162A; }
+    .lbl { font-size:10px; font-weight:900; letter-spacing:.18em; text-transform:uppercase; color:#6B7A8D; }
+    .nav { display:flex; align-items:center; gap:11px; padding:9px 12px; border-radius:8px; font-size:14px; color:#02162A; }
+    .nav-on { background:#E8F0FB; color:#0A4F95; font-weight:600; }
+    .sub { padding:7px 12px 7px 40px; border-radius:8px; font-size:13px; color:#6B7A8D; }
+    .sub-on { background:#E8F0FB; color:#0A4F95; font-weight:600; }
+    .card { border-radius:20px; background:#FFFFFF; box-shadow:0 1px 3px rgba(2,22,42,.08), 0 4px 16px rgba(2,22,42,.06); }
+    .chip { height:32px; padding:0 14px; border-radius:999px; display:flex; align-items:center; font-size:12px; }
+  </style>
+</helmet>
+
+<div style="width:1440px; height:900px; display:flex; background:#F9F9F9; color:#02162A; overflow:hidden;">
+  <aside style="width:244px; flex-shrink:0; background:#FFFFFF; border-right:1px solid rgba(2,22,42,.08); display:flex; flex-direction:column;">
+    <div style="height:76px; display:flex; align-items:center; gap:10px; padding:0 24px; border-bottom:1px solid rgba(2,22,42,.08);">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#02162A" stroke-width="1.6" stroke-linejoin="round"><path d="M12 2.5 21 7.5v9L12 21.5 3 16.5v-9z"/><path d="M12 12 21 7.5M12 12v9.5M12 12 3 7.5" stroke-width="1.2"/></svg><span style="font-size:15px; font-weight:900; letter-spacing:-.01em;">Arq3D</span>
+    </div>
+    <nav style="flex:1; display:flex; flex-direction:column; gap:2px; padding:20px 14px; overflow:hidden;">
+      <div class="nav"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6B7A8D" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/></svg>Dashboard</div>
+      <div style="margin-top:14px; padding:0 12px 8px;" class="lbl">Gerar</div>
+      <div style="display:flex; flex-direction:column; gap:2px;">
+        <div class="nav"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6B7A8D" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 20 8v8l-8 4.5L4 16V8z"/></svg>Objetos 3D</div>
+        <div class="nav"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6B7A8D" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20 15 9l-1.5-1.5L2.5 18.5z"/><path d="M17 3.5v4M15 5.5h4M19.5 12v3M18 13.5h3"/></svg>Redecorar</div>
+        <div class="nav"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6B7A8D" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 6.5h17v11h-17z"/><path d="M10 6.5v11M3.5 12H10" stroke-width="1.2"/></svg>Plantas</div>
+        <div class="nav"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6B7A8D" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 6.5h11v11h-11z"/><path d="m14.5 11 6-3v8l-6-3z"/></svg>Vídeo POV</div>
+      </div>
+      <div style="margin-top:18px; display:flex; flex-direction:column; gap:2px;">
+        <div class="nav nav-on"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="12" r="2.5"/><circle cx="6" cy="18" r="2.5"/><path d="M8.5 7.2 15.5 11M8.5 16.8 15.5 13"/></svg>Studio</div>
+        <div class="nav"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6B7A8D" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5h5v15H4zM11 4.5h4v15h-4z"/><path d="m17 5.5 3 14"/></svg>Biblioteca</div>
+        <div class="nav"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6B7A8D" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 6.5h6l2 2.5h9v10h-17z"/></svg>Projetos</div>
+      </div>
+    </nav>
+    <div style="padding:14px; border-top:1px solid rgba(2,22,42,.08); display:flex; align-items:center; gap:11px;">
+      <div style="width:32px; height:32px; border-radius:999px; background:#02162A; color:#fff; font-size:11px; font-weight:900; display:flex; align-items:center; justify-content:center;">PA</div>
+      <div style="display:flex; flex-direction:column; line-height:1.25;">
+        <span style="font-size:13px; font-weight:600;">Pedro Ayres</span>
+        <span style="font-size:11px; color:#6B7A8D;">CAU A123456-7</span>
+      </div>
+    </div>
+  </aside>
+  <main style="flex:1; display:flex; flex-direction:column; min-width:0;">
+    <header style="height:76px; flex-shrink:0; display:flex; align-items:center; justify-content:space-between; gap:24px; padding:0 40px; border-bottom:1px solid rgba(2,22,42,.08);">
+      <div style="display:flex; align-items:center; gap:9px; font-size:13px; color:#6B7A8D;"><span>Arq3D</span><span style="color:rgba(2,22,42,.25);">/</span><span>Studio</span><span style="color:rgba(2,22,42,.25);">/</span><span style="color:#02162A; font-weight:600;">Fluxo sem título</span></div>
+      <div style="display:flex; align-items:center; gap:12px;"><div class="chip" style="background:#FFFFFF; border:1px solid rgba(2,22,42,.10); color:#6B7A8D;">Salvo há 1 min</div></div>
+    </header>
+    <div style="flex:1; display:flex; min-height:0;">
+      <div style="flex:1; position:relative; background:#F0F2F5; background-image:radial-gradient(rgba(2,22,42,.10) 1px, transparent 1px); background-size:22px 22px; overflow:hidden;">
+        <svg style="position:absolute; inset:0; width:100%; height:100%;" fill="none" stroke="#9FB0C2" stroke-width="1.6">
+          <path d="M262 150 C 320 150, 320 232, 378 232"/>
+          <path d="M262 316 C 320 316, 320 250, 378 250"/>
+          <path d="M564 241 C 622 241, 622 241, 680 241"/>
+        </svg>
+        <div style="position:absolute; left:76px; top:96px; width:186px; padding:14px; border-radius:12px; background:#FFFFFF; border:1px solid rgba(2,22,42,.10); box-shadow:0 1px 3px rgba(2,22,42,.08), 0 4px 16px rgba(2,22,42,.06);">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="width:7px; height:7px; border-radius:999px; background:#1F8A5C;"></span>
+        <span style="font-size:12px; font-weight:600; flex:1;">Entrada</span>
+      </div>
+      <span style="display:block; margin-top:3px; font-size:10.5px; color:#6B7A8D;">foto do ambiente</span>
+      <div style="height:74px; border-radius:8px; background:linear-gradient(155deg,#DCE6F4,#AFC4E0); margin-top:10px;"></div>
+    </div>
+        <div style="position:absolute; left:76px; top:262px; width:186px; padding:14px; border-radius:12px; background:#FFFFFF; border:1px solid rgba(2,22,42,.10); box-shadow:0 1px 3px rgba(2,22,42,.08), 0 4px 16px rgba(2,22,42,.06);">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="width:7px; height:7px; border-radius:999px; background:#1F8A5C;"></span>
+        <span style="font-size:12px; font-weight:600; flex:1;">Referência</span>
+      </div>
+      <span style="display:block; margin-top:3px; font-size:10.5px; color:#6B7A8D;">moodboard japandi</span>
+      <div style="height:74px; border-radius:8px; background:linear-gradient(155deg,#EFEAE1,#CFC4B3); margin-top:10px;"></div>
+    </div>
+        <div style="position:absolute; left:378px; top:178px; width:186px; padding:14px; border-radius:12px; background:#FFFFFF; border:1px solid rgba(2,22,42,.10); box-shadow:0 1px 3px rgba(2,22,42,.08), 0 4px 16px rgba(2,22,42,.06);">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="width:7px; height:7px; border-radius:999px; background:#1F8A5C;"></span>
+        <span style="font-size:12px; font-weight:600; flex:1;">Compor cena</span>
+      </div>
+      <span style="display:block; margin-top:3px; font-size:10.5px; color:#6B7A8D;">gpt-image-2 · alta</span>
+      <div style="height:74px; border-radius:8px; background:linear-gradient(155deg,#E6E9ED,#BFC6CF); margin-top:10px;"></div>
+    </div>
+        <div style="position:absolute; left:680px; top:178px; width:186px; padding:14px; border-radius:12px; background:#FFFFFF; border:1px solid rgba(2,22,42,.10); box-shadow:0 1px 3px rgba(2,22,42,.08), 0 4px 16px rgba(2,22,42,.06);">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="width:7px; height:7px; border-radius:999px; background:#B8740D;"></span>
+        <span style="font-size:12px; font-weight:600; flex:1;">Saída</span>
+      </div>
+      <span style="display:block; margin-top:3px; font-size:10.5px; color:#6B7A8D;">aguardando execução</span>
+      <div style="height:74px; border-radius:8px; background:#F0F2F5; margin-top:10px; display:flex; align-items:center; justify-content:center;"><span style="font-size:11px; color:#6B7A8D;">na fila</span></div>
+    </div>
+
+        <div style="position:absolute; left:24px; bottom:24px; display:flex; gap:8px;">
+          <div style="height:38px; padding:0 16px; border-radius:999px; background:#FFFFFF; border:1px solid rgba(2,22,42,.10); display:flex; align-items:center; gap:8px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#02162A" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            <span style="font-size:11.5px; font-weight:600;">Adicionar nó</span>
+          </div>
+          <div style="height:38px; padding:0 14px; border-radius:999px; background:#FFFFFF; border:1px solid rgba(2,22,42,.10); display:flex; align-items:center;">
+            <span style="font-size:11.5px; color:#6B7A8D;">Ajustar à tela</span>
+          </div>
+        </div>
+      </div>
+
+      <aside style="width:318px; flex-shrink:0; background:#FFFFFF; border-left:1px solid rgba(2,22,42,.08); display:flex; flex-direction:column;">
+        <div style="padding:22px 24px; border-bottom:1px solid rgba(2,22,42,.08);">
+          <span class="lbl">Nó selecionado</span>
+          <p style="margin:10px 0 0; font-size:16px; font-weight:900; letter-spacing:-.01em;">Compor cena</p>
+        </div>
+        <div style="flex:1; padding:22px 24px; display:flex; flex-direction:column; gap:22px; overflow:hidden;">
+          <div>
+            <span class="lbl">Prompt</span>
+            <div style="margin-top:10px; padding:14px; border-radius:8px; background:#F9F9F9; border:1px solid rgba(2,22,42,.08);">
+              <p style="margin:0; font-size:12.5px; font-weight:300; line-height:1.55;">Combine a foto do ambiente com a paleta do moodboard, preservando as aberturas.</p>
+            </div>
+          </div>
+          <div>
+            <span class="lbl">Qualidade</span>
+            <div style="display:flex; gap:8px; margin-top:10px;">
+              <div style="flex:1; height:36px; border-radius:8px; background:#F0F2F5; display:flex; align-items:center; justify-content:center;"><span style="font-size:12px; color:#6B7A8D;">Baixa</span></div>
+              <div style="flex:1; height:36px; border-radius:8px; background:#F0F2F5; display:flex; align-items:center; justify-content:center;"><span style="font-size:12px; color:#6B7A8D;">Média</span></div>
+              <div style="flex:1; height:36px; border-radius:8px; background:#E8F0FB; border:1px solid rgba(10,79,149,.25); display:flex; align-items:center; justify-content:center;"><span style="font-size:12px; font-weight:600; color:#0A4F95;">Alta</span></div>
+            </div>
+          </div>
+          <div style="padding:14px; border-radius:8px; background:#E6F4ED;">
+            <p style="margin:0; font-size:11.5px; font-weight:600; color:#1F8A5C;">3 nós reaproveitados</p>
+            <p style="margin:6px 0 0; font-size:11px; font-weight:300; color:#1F8A5C; line-height:1.5; opacity:.85;">Só o que você mudou será cobrado nesta execução.</p>
+          </div>
+        </div>
+        <div style="padding:20px 24px; border-top:1px solid rgba(2,22,42,.08);">
+          <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:14px;">
+            <span style="font-size:12px; color:#6B7A8D;">Custo desta execução</span>
+            <span style="font-size:13px; font-weight:600;">$ 0,17</span>
+          </div>
+          <div style="height:48px; border-radius:999px; background:#02162A; display:flex; align-items:center; justify-content:center;">
+            <span style="font-size:11.5px; font-weight:900; letter-spacing:.12em; text-transform:uppercase; color:#fff;">Executar fluxo</span>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </main>
+</div>
+</x-dc>
+</body>
+</html>
