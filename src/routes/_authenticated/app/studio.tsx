@@ -571,6 +571,11 @@ function StudioInner() {
   );
 
   // === Save / Load ===
+  const refreshWorkflowList = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: qk.studioWorkflows(user?.id) }),
+    [queryClient, user?.id],
+  );
+
   const saveWorkflow = useCallback(async () => {
     if (!user) return;
     setSaving(true);
@@ -602,12 +607,7 @@ function StudioInner() {
     }
     setSaving(false);
     void refreshWorkflowList();
-  }, [user, nodes, edges, workflowName, workflowId]);
-
-  const refreshWorkflowList = useCallback(
-    () => queryClient.invalidateQueries({ queryKey: qk.studioWorkflows(user?.id) }),
-    [queryClient, user?.id],
-  );
+  }, [user, nodes, edges, workflowName, workflowId, refreshWorkflowList]);
 
   const loadWorkflow = useCallback(
     async (id: string) => {
@@ -938,7 +938,16 @@ function StudioInner() {
       }
     }
     setRunning(false);
-  }, [user, nodes, edges, workflowId, setNodes]);
+    // runId precisa estar aqui: runWorkflow o lê para decidir se reaproveita os
+    // resultados da execução anterior. Sem a dependência, o callback memorizado
+    // continua enxergando o runId de antes — e uma segunda execução sem edição
+    // nenhuma cairia no ramo "primeira run", criando uma run nova em vez de
+    // reaproveitar. Ou seja: o usuário pagaria de novo por nós que não mudaram.
+    //
+    // Hoje isso não dispara porque todo setRunId do arquivo vem acompanhado de
+    // um setNodes, que recria o callback. É correção por acidente: basta alguém
+    // acrescentar um caminho que mexa no runId sem tocar nos nós.
+  }, [user, nodes, edges, workflowId, setNodes, runId]);
 
   // === Retry de um nó específico ===
   const retryNode = useCallback(
