@@ -39,6 +39,7 @@ import {
 
 import { supabase } from "@/integrations/supabase/client";
 import { qk } from "@/lib/query-keys";
+import { computeNodeHashes } from "@/lib/node-hash";
 import { useStudioNodeCost, formatUsd } from "@/lib/pipeline-costs";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth-context";
@@ -227,14 +228,6 @@ const TEMPLATES: TemplateDef[] = [
   },
 ];
 
-// Hash determinístico (djb2) dos parâmetros que invalidam o resultado de um nó.
-// Inclui o hash dos nós de entrada → mudança upstream invalida tudo a jusante.
-function djb2(s: string): string {
-  let h = 5381;
-  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
-  return (h >>> 0).toString(36);
-}
-
 type NodeResultEntry = {
   url?: string;
   path?: string;
@@ -243,39 +236,6 @@ type NodeResultEntry = {
   error?: string;
   hash?: string;
 };
-
-function computeNodeHashes(nodes: Node<StudioNodeData>[], edges: Edge[]): Record<string, string> {
-  const byId = new Map(nodes.map((n) => [n.id, n] as const));
-  const inputsOf = (id: string) => edges.filter((e) => e.target === id).map((e) => e.source);
-  const memo = new Map<string, string>();
-  const visit = (id: string, stack: Set<string>): string => {
-    if (memo.has(id)) return memo.get(id)!;
-    if (stack.has(id)) return "cycle";
-    stack.add(id);
-    const n = byId.get(id);
-    if (!n) return "missing";
-    const d = n.data;
-    const inputHashes = inputsOf(id)
-      .sort()
-      .map((sid) => visit(sid, stack));
-    const sig = JSON.stringify({
-      op: d.op,
-      model: d.model ?? null,
-      prompt: (d.prompt ?? "").trim(),
-      storagePath: d.storagePath ?? null,
-      // params adicionais que afetam o resultado
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      quality: (d as any).quality ?? null,
-      inputs: inputHashes,
-    });
-    const h = djb2(sig);
-    memo.set(id, h);
-    return h;
-  };
-  const out: Record<string, string> = {};
-  for (const n of nodes) out[n.id] = visit(n.id, new Set());
-  return out;
-}
 
 function StudioPage() {
   return (

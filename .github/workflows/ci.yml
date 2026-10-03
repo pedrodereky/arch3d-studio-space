@@ -39,6 +39,12 @@ jobs:
       - name: Typecheck
         run: npx tsc --noEmit
 
+      # Antes daqui a CI provava que o projeto COMPILA, não que funciona.
+      # Roda antes do build: é o passo mais rápido que pode reprovar por motivo
+      # de comportamento, e falhar cedo economiza o build.
+      - name: Testes
+        run: npm test
+
       - name: Build
         run: npm run build
 
