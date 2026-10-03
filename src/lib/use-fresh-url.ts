@@ -121,6 +121,11 @@ export function useFreshUrls(urls: Array<string | null | undefined>): Record<str
     return () => {
       cancelled = true;
     };
+    // `key` é a impressão digital de `urls` (join), e é de propósito que a
+    // dependência seja ela e não o array: `urls` é recriado a cada render do
+    // chamador, e depender dele re-assinaria toda URL da tela continuamente.
+    // O lint não enxerga a derivação; este é o caso em que ele está errado.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
   return useMemo(() => map, [map]);
