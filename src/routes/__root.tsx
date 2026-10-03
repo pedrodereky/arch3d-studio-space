@@ -5,6 +5,14 @@ import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/lib/auth-context";
 
 import appCss from "../styles.css?url";
+import {
+  SITE_NAME,
+  SITE_TITLE,
+  SITE_DESCRIPTION,
+  OG_IMAGE,
+  OG_IMAGE_WIDTH,
+  OG_IMAGE_HEIGHT,
+} from "@/lib/site-meta";
 
 function NotFoundComponent() {
   return (
@@ -33,48 +41,25 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Arq3D Studio — Da referência ao 3D em 60 segundos" },
-      {
-        name: "description",
-        content:
-          "Plataforma brasileira de IA 3D para arquitetos. Suba uma foto ou planta e receba modelos prontos para Lumion, SketchUp e Revit.",
-      },
-      { name: "author", content: "Arq3D Studio" },
-      { property: "og:title", content: "Arq3D Studio — Da referência ao 3D em 60 segundos" },
-      {
-        property: "og:description",
-        content:
-          "Plataforma brasileira de IA 3D para arquitetos. Da referência ao modelo pronto em 60 segundos.",
-      },
+      { title: SITE_TITLE },
+      { name: "description", content: SITE_DESCRIPTION },
+      { name: "author", content: SITE_NAME },
+
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
-      { name: "twitter:title", content: "Arq3D Studio — Da referência ao 3D em 60 segundos" },
-      {
-        name: "description",
-        content:
-          "Arq3D Studio generates 3D models from text or 2D images, offering realistic textures and furniture.",
-      },
-      {
-        property: "og:description",
-        content:
-          "Arq3D Studio generates 3D models from text or 2D images, offering realistic textures and furniture.",
-      },
-      {
-        name: "twitter:description",
-        content:
-          "Arq3D Studio generates 3D models from text or 2D images, offering realistic textures and furniture.",
-      },
-      {
-        property: "og:image",
-        content:
-          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/7605fd76-cdcf-4093-bc2c-0c618489faae/id-preview-c1fd17f7--853a096e-caff-4593-84be-13443c2bc0f7.lovable.app-1778102748099.png",
-      },
-      {
-        name: "twitter:image",
-        content:
-          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/7605fd76-cdcf-4093-bc2c-0c618489faae/id-preview-c1fd17f7--853a096e-caff-4593-84be-13443c2bc0f7.lovable.app-1778102748099.png",
-      },
+      { property: "og:site_name", content: SITE_NAME },
+      { property: "og:locale", content: "pt_BR" },
+      { property: "og:title", content: SITE_TITLE },
+      { property: "og:description", content: SITE_DESCRIPTION },
+      { property: "og:image", content: OG_IMAGE },
+      { property: "og:image:width", content: OG_IMAGE_WIDTH },
+      { property: "og:image:height", content: OG_IMAGE_HEIGHT },
+
+      // summary_large_image porque agora existe uma 1200×630 nossa; era
+      // "summary", que recorta num quadrado pequeno.
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: SITE_TITLE },
+      { name: "twitter:description", content: SITE_DESCRIPTION },
+      { name: "twitter:image", content: OG_IMAGE },
     ],
     links: [
       { rel: "stylesheet", href: appCss },

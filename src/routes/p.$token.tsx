@@ -5,12 +5,40 @@ import { supabase } from "@/integrations/supabase/client";
 import { qk } from "@/lib/query-keys";
 import { Wordmark } from "@/components/brand/Wordmark";
 import { useFreshUrl } from "@/lib/use-fresh-url";
+import { SITE_NAME, OG_IMAGE, OG_IMAGE_WIDTH, OG_IMAGE_HEIGHT } from "@/lib/site-meta";
+
+const SHARE_TITLE = `Projeto compartilhado — ${SITE_NAME}`;
+const SHARE_DESCRIPTION = "Veja as peças deste projeto em 3D. Sem cadastro, sem instalar nada.";
 
 export const Route = createFileRoute("/p/$token")({
   head: () => ({
+    // Este é o link que o arquiteto manda para o cliente. Antes a rota definia
+    // só título e robots, e herdava o og:image da raiz — que apontava para um
+    // screenshot de preview da Lovable. O cartão no WhatsApp mostrava a
+    // ferramenta, não o trabalho.
+    //
+    // Continua estático: o projeto é carregado no cliente, e crawler não roda
+    // JS. Mostrar a capa do projeto exige um loader de servidor — ver a nota
+    // em docs/.
     meta: [
-      { title: "Projeto compartilhado — Arq3D Studio" },
+      { title: SHARE_TITLE },
+      { name: "description", content: SHARE_DESCRIPTION },
+      // noindex porque o token é a única proteção do link.
       { name: "robots", content: "noindex" },
+
+      { property: "og:type", content: "website" },
+      { property: "og:site_name", content: SITE_NAME },
+      { property: "og:locale", content: "pt_BR" },
+      { property: "og:title", content: SHARE_TITLE },
+      { property: "og:description", content: SHARE_DESCRIPTION },
+      { property: "og:image", content: OG_IMAGE },
+      { property: "og:image:width", content: OG_IMAGE_WIDTH },
+      { property: "og:image:height", content: OG_IMAGE_HEIGHT },
+
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: SHARE_TITLE },
+      { name: "twitter:description", content: SHARE_DESCRIPTION },
+      { name: "twitter:image", content: OG_IMAGE },
     ],
   }),
   component: SharedProjectPage,
