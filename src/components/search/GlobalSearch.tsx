@@ -13,6 +13,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { qk } from "@/lib/query-keys";
+import { sanitizeSearchTerm } from "@/lib/search-term";
 import { ALL_SCREENS, adminItems, type NavLeaf } from "@/lib/nav-items";
 import { PIPELINE_LABEL, pipelineLabel, type PipelineType } from "@/lib/pipeline-labels";
 
@@ -20,15 +21,6 @@ type Props = { open: boolean; onOpenChange: (open: boolean) => void; isAdmin: bo
 
 const MIN_CHARS = 2;
 const PER_GROUP = 6;
-
-/**
- * O `.or()` do PostgREST é uma string com vírgulas e parênteses como sintaxe.
- * Um termo com vírgula viraria dois filtros, e um com parêntese quebraria a
- * query inteira — então o termo é reduzido ao que pode aparecer cru.
- */
-function sanitize(term: string): string {
-  return term.replace(/[^\p{L}\p{N}\s@.\-_]/gu, " ").trim();
-}
 
 type Hit = {
   kind: "generation" | "project" | "workflow";
@@ -58,7 +50,7 @@ export function GlobalSearch({ open, onOpenChange, isAdmin }: Props) {
     }
   }, [open]);
 
-  const clean = sanitize(term);
+  const clean = sanitizeSearchTerm(term);
   const enabled = !!user && clean.length >= MIN_CHARS;
 
   const { data, isFetching } = useQuery({
