@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Library as LibraryIcon,
   Loader2,
@@ -36,6 +36,8 @@ import {
 import { ModelViewer } from "@/components/library/ModelViewer";
 import { FreshImg, FreshVideo, FreshLink } from "@/components/library/FreshMedia";
 import { pipelineLabel } from "@/lib/pipeline-labels";
+import { sanitizeSearchTerm, pipelinesMatchingLabel } from "@/lib/search-term";
+import { FILTER_STATUSES, type GenerationFilter } from "@/lib/generation-filters";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -71,9 +73,34 @@ type GenRow = {
   metadata: unknown;
 };
 
-type Filter = "all" | "succeeded" | "processing" | "failed";
-
 const PAGE_SIZE = 60;
+
+/**
+ * Aplica aba e termo NA CONSULTA, não depois dela.
+ *
+ * Antes isto era filtro no cliente sobre as páginas já carregadas: buscar
+ * "poltrona" só achava poltronas entre as 60 primeiras gerações, e a tela
+ * carregava um aviso admitindo isso. A mesma função serve a lista e as
+ * contagens — se as duas divergissem, o chip e a grade discordariam.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function applyFilters<T extends { or: any; in: any }>(
+  q: T,
+  opts: { filter: GenerationFilter; term: string },
+): T {
+  const statuses = FILTER_STATUSES[opts.filter];
+  let out = statuses ? (q.in("status", statuses) as T) : q;
+  if (opts.term) {
+    const pipelines = pipelinesMatchingLabel(opts.term);
+    const like = `%${opts.term}%`;
+    out = out.or(
+      pipelines.length
+        ? `prompt.ilike.${like},pipeline_type.in.(${pipelines.join(",")})`
+        : `prompt.ilike.${like}`,
+    ) as T;
+  }
+  return out;
+}
 
 const SELECT_COLUMNS =
   "id,status,pipeline_type,thumbnail_url,final_render_url,video_url,intermediate_images,glb_url,obj_url,fbx_url,source_images,prompt,error_message,is_public,created_at,completed_at,cost_usd,metadata";
@@ -100,34 +127,73 @@ function BibliotecaPage() {
   const { destacar } = Route.useSearch();
   const navigate = useNavigate();
 
-  const [filter, setFilter] = useState<Filter>("all");
+  const [filter, setFilter] = useState<GenerationFilter>("all");
   const [query, setQuery] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
   const [openVariant, setOpenVariant] = useState<number | null>(null);
   const queryClient = useQueryClient();
 
+  // Debounce antes de virar chave de query: sem isto cada tecla descartaria a
+  // lista anterior e dispararia uma consulta nova.
+  const [debounced, setDebounced] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(query), 250);
+    return () => clearTimeout(t);
+  }, [query]);
+  const term = sanitizeSearchTerm(debounced);
+
+  // Aba e termo entram na chave: cada combinação é uma lista própria no cache.
   const listKey = useMemo(
-    () => qk.generationsList({ view: "biblioteca", userId: user?.id }),
-    [user?.id],
+    () => qk.generationsList({ view: "biblioteca", userId: user?.id, filter, term }),
+    [user?.id, filter, term],
   );
 
-  const { data, error, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
-    queryKey: listKey,
+  const { data, error, fetchNextPage, hasNextPage, isFetchingNextPage, isFetching } =
+    useInfiniteQuery({
+      queryKey: listKey,
+      enabled: !!user,
+      initialPageParam: 0,
+      queryFn: async ({ pageParam }) => {
+        const from = (pageParam as number) * PAGE_SIZE;
+        const q = applyFilters(supabase.from("generations").select(SELECT_COLUMNS), {
+          filter,
+          term,
+        });
+        const { data: rows, error: queryError } = await q
+          .order("created_at", { ascending: false })
+          .range(from, from + PAGE_SIZE - 1);
+        if (queryError) throw new Error(queryError.message);
+        return (rows ?? []) as GenRow[];
+      },
+      // Página curta significa fim da lista.
+      getNextPageParam: (lastPage, allPages) =>
+        lastPage.length === PAGE_SIZE ? allPages.length : undefined,
+    });
+
+  // Contagens reais, do servidor. Antes eram contadas sobre as linhas já
+  // carregadas, então "Prontas 60" queria dizer "60 entre as que você viu".
+  // `head: true` traz só o total, sem linha nenhuma.
+  const countsKey = useMemo(() => qk.generationCounts(user?.id, term), [user?.id, term]);
+  const { data: counts } = useQuery({
+    queryKey: countsKey,
     enabled: !!user,
-    initialPageParam: 0,
-    queryFn: async ({ pageParam }) => {
-      const from = (pageParam as number) * PAGE_SIZE;
-      const { data: rows, error: queryError } = await supabase
-        .from("generations")
-        .select(SELECT_COLUMNS)
-        .order("created_at", { ascending: false })
-        .range(from, from + PAGE_SIZE - 1);
-      if (queryError) throw new Error(queryError.message);
-      return (rows ?? []) as GenRow[];
+    queryFn: async () => {
+      const one = async (f: GenerationFilter) => {
+        const { count, error: countError } = await applyFilters(
+          supabase.from("generations").select("id", { count: "exact", head: true }),
+          { filter: f, term },
+        );
+        if (countError) throw new Error(countError.message);
+        return count ?? 0;
+      };
+      const [all, succeeded, processing, failed] = await Promise.all([
+        one("all"),
+        one("succeeded"),
+        one("processing"),
+        one("failed"),
+      ]);
+      return { all, succeeded, processing, failed };
     },
-    // Página curta significa fim da lista.
-    getNextPageParam: (lastPage, allPages) =>
-      lastPage.length === PAGE_SIZE ? allPages.length : undefined,
   });
 
   const items = useMemo(() => (data ? data.pages.flat() : null), [data]);
@@ -164,6 +230,7 @@ function BibliotecaPage() {
                   }
                 : prev,
             );
+            void queryClient.invalidateQueries({ queryKey: countsKey });
             return;
           }
 
@@ -180,17 +247,25 @@ function BibliotecaPage() {
                 ),
               };
             }
-            // Linha nova entra no topo da primeira página.
+            // Linha desconhecida só entra no topo quando a lista não tem
+            // recorte. Com aba ou termo ativos, inserir às cegas colocaria na
+            // grade uma geração que não casa com o filtro — e quem sabe se
+            // casa é a consulta, não este callback.
+            if (filter !== "all" || term) return prev;
             const [first = [], ...rest] = prev.pages;
             return { ...prev, pages: [[row, ...first], ...rest] };
           });
+
+          // Os números dos chips vêm do servidor: uma geração que terminou
+          // mudou de aba, e as contagens precisam acompanhar.
+          void queryClient.invalidateQueries({ queryKey: countsKey });
         },
       )
       .subscribe();
     return () => {
       void supabase.removeChannel(ch);
     };
-  }, [user, queryClient, listKey]);
+  }, [user, queryClient, listKey, countsKey, filter, term]);
 
   const destacarRef = useRef<string | null>(null);
   useEffect(() => {
@@ -203,24 +278,10 @@ function BibliotecaPage() {
     }
   }, [destacar, items]);
 
-  const filtered = useMemo<CardItem[]>(() => {
+  // Sem filtro aqui: a consulta já devolveu exatamente o conjunto pedido.
+  const cards = useMemo<CardItem[]>(() => {
     if (!items) return [];
-    const rows = items.filter((it) => {
-      if (filter === "succeeded" && it.status !== "succeeded") return false;
-      if (filter === "failed" && it.status !== "failed" && it.status !== "cancelled") return false;
-      if (filter === "processing" && it.status !== "queued" && it.status !== "processing")
-        return false;
-      if (query.trim()) {
-        const q = query.toLowerCase();
-        if (
-          !(it.prompt ?? "").toLowerCase().includes(q) &&
-          !pipelineLabel(it.pipeline_type).toLowerCase().includes(q)
-        )
-          return false;
-      }
-      return true;
-    });
-    return rows.map<CardItem>((it) => {
+    return items.map<CardItem>((it) => {
       const variations = it.pipeline_type === "redecorate" ? readVariations(it.metadata) : [];
       return {
         gen: it,
@@ -228,17 +289,6 @@ function BibliotecaPage() {
         variantTotal: variations.length,
       };
     });
-  }, [items, filter, query]);
-
-  const counts = useMemo(() => {
-    const c = { all: 0, succeeded: 0, processing: 0, failed: 0 };
-    for (const it of items ?? []) {
-      c.all++;
-      if (it.status === "succeeded") c.succeeded++;
-      else if (it.status === "queued" || it.status === "processing") c.processing++;
-      else if (it.status === "failed" || it.status === "cancelled") c.failed++;
-    }
-    return c;
   }, [items]);
 
   const openItem = items?.find((i) => i.id === openId) ?? null;
@@ -268,27 +318,31 @@ function BibliotecaPage() {
 
       <div className="mt-7 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-2">
-          <FilterChip active={filter === "all"} onClick={() => setFilter("all")} count={counts.all}>
+          <FilterChip
+            active={filter === "all"}
+            onClick={() => setFilter("all")}
+            count={counts?.all}
+          >
             Todas
           </FilterChip>
           <FilterChip
             active={filter === "succeeded"}
             onClick={() => setFilter("succeeded")}
-            count={counts.succeeded}
+            count={counts?.succeeded}
           >
             Prontas
           </FilterChip>
           <FilterChip
             active={filter === "processing"}
             onClick={() => setFilter("processing")}
-            count={counts.processing}
+            count={counts?.processing}
           >
             Processando
           </FilterChip>
           <FilterChip
             active={filter === "failed"}
             onClick={() => setFilter("failed")}
-            count={counts.failed}
+            count={counts?.failed}
           >
             Falhas
           </FilterChip>
@@ -300,11 +354,11 @@ function BibliotecaPage() {
           <div className="flex items-center justify-center py-24">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
-        ) : filtered.length === 0 ? (
+        ) : cards.length === 0 ? (
           <EmptyState onGenerate={() => navigate({ to: "/app/gerar" })} hasAny={items.length > 0} />
         ) : (
           <div className="grid grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filtered.map((it) => (
+            {cards.map((it) => (
               <Card
                 key={it.gen.id}
                 gen={it.gen}
@@ -334,13 +388,11 @@ function BibliotecaPage() {
               </button>
             ) : (
               <p className="text-xs font-light text-muted-foreground">
-                Fim da biblioteca — {items.length} {items.length === 1 ? "geração" : "gerações"}.
+                {filter === "all" && !term
+                  ? `Fim da biblioteca — ${items.length} ${items.length === 1 ? "geração" : "gerações"}.`
+                  : `${items.length} ${items.length === 1 ? "resultado" : "resultados"}.`}
               </p>
             )}
-            <p className="text-[11px] font-light text-muted-foreground">
-              Filtros e busca se aplicam às gerações já carregadas — para procurar na conta inteira,
-              use a busca global (⌘K).
-            </p>
           </div>
         )}
       </div>
@@ -1167,7 +1219,8 @@ function FilterChip({
 }: {
   active: boolean;
   onClick: () => void;
-  count: number;
+  /** `undefined` enquanto a contagem do servidor não chegou. */
+  count: number | undefined;
   children: React.ReactNode;
 }) {
   return (
@@ -1182,7 +1235,8 @@ function FilterChip({
       }
     >
       {children}
-      <span className="ml-1.5 opacity-60">{count}</span>
+      {/* Um traço enquanto a contagem não chegou — um zero mentiria. */}
+      <span className="ml-1.5 opacity-60">{count ?? "—"}</span>
     </button>
   );
 }

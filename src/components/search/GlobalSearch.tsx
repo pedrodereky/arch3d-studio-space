@@ -13,9 +13,9 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { qk } from "@/lib/query-keys";
-import { sanitizeSearchTerm } from "@/lib/search-term";
+import { sanitizeSearchTerm, pipelinesMatchingLabel } from "@/lib/search-term";
 import { ALL_SCREENS, adminItems, type NavLeaf } from "@/lib/nav-items";
-import { PIPELINE_LABEL, pipelineLabel, type PipelineType } from "@/lib/pipeline-labels";
+import { pipelineLabel } from "@/lib/pipeline-labels";
 
 type Props = { open: boolean; onOpenChange: (open: boolean) => void; isAdmin: boolean };
 
@@ -58,11 +58,7 @@ export function GlobalSearch({ open, onOpenChange, isAdmin }: Props) {
     enabled,
     queryFn: async (): Promise<Hit[]> => {
       const like = `%${clean}%`;
-      // "redecorar" precisa achar gerações do pipeline `redecorate`: o usuário
-      // busca pelo rótulo que a interface mostra, não pelo valor do enum.
-      const pipelineMatches = (Object.entries(PIPELINE_LABEL) as [PipelineType, string][])
-        .filter(([, label]) => label.toLowerCase().includes(clean.toLowerCase()))
-        .map(([id]) => id);
+      const pipelineMatches = pipelinesMatchingLabel(clean);
 
       const genFilter = pipelineMatches.length
         ? `prompt.ilike.${like},pipeline_type.in.(${pipelineMatches.join(",")})`
