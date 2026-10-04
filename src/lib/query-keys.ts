@@ -10,6 +10,8 @@ export const qk = {
   generations: () => ["generations"] as const,
   generationsList: (params: Record<string, unknown>) => ["generations", "list", params] as const,
   generation: (id: string) => ["generations", "detail", id] as const,
+  generationCounts: (userId: string | undefined, term: string) =>
+    ["generations", "counts", userId, term] as const,
 
   projects: () => ["projects"] as const,
   projectsList: (userId: string | undefined) => ["projects", "list", userId] as const,
