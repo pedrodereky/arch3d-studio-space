@@ -5,10 +5,9 @@
 @custom-variant dark (&:is(.dark *));
 
 /* ======================================================================
-   Arq3D Studio — built on the Viver de IA Design System
+   Arq3D Studio — design tokens
    Canonical tokens live as `--via-*`. Shadcn semantic tokens
    (`--background`, `--primary`, etc.) are mapped to brand primitives.
-   Full reference: /design-system/README.md and /design-system/colors_and_type.css
    ====================================================================== */
 
 /* Avenir LT Std — local OTFs served from /public/fonts */
@@ -108,7 +107,7 @@
 }
 
 :root {
-  /* ============== Viver de IA brand primitives ============== */
+  /* ============== Brand primitives ============== */
   --via-navy: #02162a;
   --via-navy-80: rgba(2, 22, 42, 0.8);
   --via-navy-40: rgba(2, 22, 42, 0.4);

@@ -6,11 +6,10 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  // design-system/ é um kit de referência versionado como documentação, não
-  // código da aplicação. src/integrations/supabase é gerado — editá-lo para
-  // agradar o lint seria desfeito na próxima geração.
+  // src/integrations/supabase é gerado — editá-lo para agradar o lint seria
+  // desfeito na próxima geração.
   {
-    ignores: ["dist", ".output", ".vinxi", "design-system", "src/integrations/supabase"],
+    ignores: ["dist", ".output", ".vinxi", "src/integrations/supabase"],
   },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
