@@ -21,12 +21,14 @@ jobs:
           node-version: "22"
           cache: npm
 
-      # O package-lock.json fixa as versões que a CI valida. `npm install`
-      # resolvia versões novas a cada execução e quebrou quando o
-      # @tanstack/react-start passou a exigir o Vite 8. O bun.lockb continua
-      # sendo o da Lovable (registry privado, inacessível daqui).
+      # O package-lock.json fixa as versões que a CI valida. Sem ele, o
+      # npm install resolvia versões novas a cada execução e quebrou quando o
+      # @tanstack/react-start passou a exigir o Vite 8. `npm install` (e não
+      # `npm ci`) porque o lockfile gerado no macOS não lista os binários
+      # opcionais de Linux de workerd/sharp; o npm completa só esses, sem mudar
+      # as versões travadas. O bun.lockb continua sendo o da Lovable.
       - name: Instalar dependências
-        run: npm ci --no-audit --no-fund
+        run: npm install --no-audit --no-fund
 
       - name: Formatação
         run: npx prettier --check .

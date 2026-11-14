@@ -90,7 +90,7 @@ deno check $(find supabase/functions -name '*.ts')
 
 ### Lockfiles
 
-- `package-lock.json` fixa as versões usadas pela CI (`npm ci`). Para atualizar uma dependência, rode `npm install <pacote>@<versão>` e versione o lockfile junto.
+- `package-lock.json` fixa as versões usadas pela CI. Para atualizar uma dependência, rode `npm install <pacote>@<versão>` e versione o lockfile junto.
 - `bun.lockb` é o da Lovable. Ele aponta parte dos pacotes para o registry privado da Lovable, que fica inacessível fora dela.
 
 ## Backend
