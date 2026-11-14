@@ -72,9 +72,7 @@ export function LandingFooter() {
           ))}
         </div>
         <div className="mt-14 flex flex-col items-start justify-between gap-3 border-t border-white/10 pt-6 md:flex-row md:items-center">
-          <p className="text-xs text-primary-foreground/50">
-            © 2026 Arq3D Studio. Feito com Viver de IA.
-          </p>
+          <p className="text-xs text-primary-foreground/50">© 2026 Arq3D Studio.</p>
           <p className="text-xs text-primary-foreground/40">v0.1 · Fundação</p>
         </div>
       </div>
