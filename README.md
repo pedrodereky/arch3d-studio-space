@@ -1,63 +1,74 @@
 # Arq3D Studio
 
-Crie um projeto em branco chamado Arq3D Studio
+**Da referência ao 3D pronto em 60 segundos.** Arquitetos e designers de interiores enviam uma foto, uma planta ou uma referência do Pinterest, e o Arq3D Studio devolve o modelo 3D pronto para usar no Lumion, no SketchUp ou no Revit.
 
-This project was built with [Lovable](https://lovable.dev).
+## O que dá para fazer
 
-## Build with Lovable
+| Fluxo           | Descrição                                                                                                               |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| **Imagem → 3D** | Uma foto vira um modelo 3D. No modo _enriquecido_, a IA remove o fundo e gera vistas de vários ângulos antes de modelar |
+| **Edita antes** | Muda cor, material ou tamanho do objeto antes de gerar o 3D                                                             |
+| **Texto → 3D**  | Descreve o objeto e a IA cria o modelo do zero, sem imagem                                                              |
+| **Planta**      | Analisa uma planta existente ou gera uma planta 2D a partir de um briefing                                              |
+| **Redecorar**   | Redecora a foto de um ambiente e permite iterar sobre o resultado                                                       |
+| **Studio**      | Detecta os móveis de uma cena e gera e publica cada um                                                                  |
+| **Biblioteca**  | Reúne os modelos publicados, com busca no servidor e visualização 3D no navegador                                       |
 
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/8956518d-6fec-432b-abf6-fed71ca8b04d).
+Outros recursos:
 
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
+- Exportação em **GLB, FBX, OBJ e DAE**: GLB para o Lumion; FBX para o SketchUp e o Revit
+- Projetos para agrupar as gerações, com prévia lado a lado
+- Busca global (paleta de comandos) sobre gerações, projetos, fluxos e telas
+- Painel de custo medido por pipeline e de reaproveitamento de modelos
+- Links públicos de compartilhamento, com cartão de prévia próprio para redes sociais
+- As gerações são privadas por padrão e só aparecem na biblioteca se o usuário publicar
 
-## Development
+## Arquitetura
 
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+```
+Navegador (TanStack Start + React)
+   │
+   ├── Supabase Auth / Postgres (RLS) / Storage
+   │
+   └── Edge Functions (Deno)
+          ├── orchestrate-generation ──► Replicate (Hunyuan3D e outros modelos)
+          │                               └── replicate-webhook (resultado assíncrono)
+          ├── analyze-floorplan-vision / analyze-existing-floorplan ──► Gemini
+          ├── generate-floorplan-2d, refine-text-prompt
+          ├── redecorate-image / redecorate-iterate
+          └── studio-detect-furniture / studio-execute / studio-publish
+```
+
+A geração 3D é assíncrona. O pedido vai para a Replicate, o webhook grava o resultado, e o banco limpa sozinho as gerações que ficaram travadas, com um job agendado por migration.
+
+## Stack
+
+| Camada    | Tecnologia                                                                                         |
+| --------- | -------------------------------------------------------------------------------------------------- |
+| Front-end | React 19, TanStack Start / Router / Query, Tailwind CSS 4, shadcn/ui, React Flow, `<model-viewer>` |
+| Back-end  | Supabase: Postgres com RLS, Auth, Storage e Edge Functions em Deno                                 |
+| IA        | Replicate (modelos 3D e de imagem) e Google Gemini (visão e texto)                                 |
+| Deploy    | Cloudflare Workers                                                                                 |
+| Qualidade | Vitest, ESLint, Prettier, `tsc` e `deno check` das Edge Functions na CI                            |
+
+## Rodando localmente
 
 ```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
+npm install
 npm run dev
 ```
 
-Checagens que a CI roda, e que valem antes de abrir um PR:
+Configure as variáveis do Supabase no front (`VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY`) e os segredos das Edge Functions (`SUPABASE_SERVICE_ROLE_KEY`, `REPLICATE_WEBHOOK_SECRET`, `LOVABLE_API_KEY`, entre outros).
 
-```sh
-npx prettier --check .
-npm run lint
-npx tsc --noEmit
-npm run build
-```
+| Comando            | Descrição                   |
+| ------------------ | --------------------------- |
+| `npm run dev`      | Servidor de desenvolvimento |
+| `npm run build`    | Build de produção           |
+| `npm test`         | Testes (Vitest)             |
+| `npm run lint`     | ESLint                      |
+| `npm run format`   | Prettier                    |
+| `npm run db:check` | Confere o dump do schema    |
 
-O `tsconfig` cobre só `src/`. As edge functions rodam em Deno e têm typecheck
-próprio, que a CI também roda:
+## Design
 
-```sh
-npm install -g deno
-deno check $(find supabase/functions -name '*.ts')
-```
-
-### Lockfiles
-
-O repositório carrega dois, e nenhum serve para uma instalação reproduzível
-fora da Lovable:
-
-- `package-lock.json` está defasado em relação ao `package.json` — não lista
-  `@supabase/supabase-js`, `@xyflow/react` e outras dependências que o app
-  importa. `npm ci` falha; `npm i` funciona porque resolve do `package.json`.
-- `bun.lockb` fixa parte dos pacotes no registry privado da Lovable
-  (`europe-west1-npm.pkg.dev/lovable-core-prod`), inacessível de fora — um
-  runner público leva 403.
-
-Por isso a CI usa `npm install` em vez de `npm ci`. Decidir um gerenciador
-canônico e regerar o lockfile correspondente deixaria a instalação
-reproduzível e a CI mais rápida, mas é uma escolha sobre como o projeto
-sincroniza com a Lovable, não uma correção mecânica.
-
-## Backend
-
-O schema, as credenciais das edge functions e o agendamento de cron estão
-documentados em [`supabase/README.md`](supabase/README.md).
+- [`design/mockups/`](design/mockups): pranchas das direções de layout. A **Direção A, Ateliê,** é a aplicada no produto
