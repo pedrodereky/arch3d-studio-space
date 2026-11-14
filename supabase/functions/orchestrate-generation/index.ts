@@ -300,10 +300,7 @@ async function processGeneration(generationId: string): Promise<void> {
       const userPrompt = ((gen.prompt as string | null) ?? "").trim();
       const cameraMode =
         ((gen.metadata as Record<string, unknown> | null)?.camera_mode as
-          | "pov_walk"
-          | "aerial_flyover"
-          | "facade_tour"
-          | undefined) ?? "pov_walk";
+          "pov_walk" | "aerial_flyover" | "facade_tour" | undefined) ?? "pov_walk";
       const BASE_PROMPTS: Record<string, string> = {
         pov_walk:
           "First-person POV walkthrough of this interior space. Smooth, slow camera movement at human eye level, gently exploring the room as if walking through it. Cinematic, photorealistic, natural lighting, no people visible, no text overlays.",
@@ -372,10 +369,8 @@ async function processGeneration(generationId: string): Promise<void> {
       if (!lovableKey) throw new Error("LOVABLE_API_KEY não configurado");
       const viewMode =
         ((gen.metadata as Record<string, unknown> | null)?.view_mode as
-          | "isometric_aerial"
-          | "frontal_interior"
-          | "facade_exterior"
-          | undefined) ?? "isometric_aerial";
+          "isometric_aerial" | "frontal_interior" | "facade_exterior" | undefined) ??
+        "isometric_aerial";
       const metadataLog: Record<string, unknown> = {
         diagnostics_mode: diagnosticsMode,
         view_mode: viewMode,

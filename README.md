@@ -69,6 +69,34 @@ Configure as variáveis do Supabase no front (`VITE_SUPABASE_URL` e `VITE_SUPABA
 | `npm run format`   | Prettier                    |
 | `npm run db:check` | Confere o dump do schema    |
 
+### Antes de abrir um PR
+
+Estas são as checagens que a CI roda:
+
+```sh
+npx prettier --check .
+npm run lint
+npx tsc --noEmit
+npm test
+npm run build
+```
+
+O `tsconfig` cobre só `src/`. As Edge Functions rodam em Deno e têm um typecheck próprio, que a CI também roda:
+
+```sh
+npm install -g deno
+deno check $(find supabase/functions -name '*.ts')
+```
+
+### Lockfiles
+
+- `package-lock.json` fixa as versões usadas pela CI (`npm ci`). Para atualizar uma dependência, rode `npm install <pacote>@<versão>` e versione o lockfile junto.
+- `bun.lockb` é o da Lovable. Ele aponta parte dos pacotes para o registry privado da Lovable, que fica inacessível fora dela.
+
+## Backend
+
+O schema, as credenciais das Edge Functions e o agendamento de cron estão documentados em [`supabase/README.md`](supabase/README.md).
+
 ## Design
 
 - [`design/mockups/`](design/mockups): pranchas das direções de layout. A **Direção A, Ateliê,** é a aplicada no produto
