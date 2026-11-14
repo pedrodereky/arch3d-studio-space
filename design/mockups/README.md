@@ -25,7 +25,7 @@ As direções **B — Painel** (`AppB`, `LoginB`) e **C — Estúdio** (`AppC`,
 > mudar conforme a tela.
 
 As cores, raios, sombra e tipografia saem dos tokens reais do produto
-(`src/styles.css` e `design-system/colors_and_type.css`) — navy `#02162A`,
+(`src/styles.css`) — navy `#02162A`,
 azul `#0A4F95`, azul claro `#E8F0FB`, fundo `#F9F9F9`, raios 4/8/12/20/32.
 No navegador a fonte é Mulish, substituta métrica do Avenir LT Std, que não
 está no Google Fonts; no app o Avenir continua sendo carregado dos OTFs locais.

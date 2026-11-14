@@ -11,7 +11,7 @@
       "x": 0,
       "y": -190,
       "w": 620,
-      "text": "Ícone do Arq3D Studio — quatro direções para aprovar.\n\nHoje o site não tem ícone nenhum: nada declara favicon no head, e o arquivo que existe em public/ é o logo da Viver de IA.\n\nCada prancha mostra a marca grande, depois em 64/32/16 no tamanho real — é aos 16 px que a decisão se ganha ou se perde."
+      "text": "Ícone do Arq3D Studio — quatro direções para aprovar.\n\nHoje o site não tem ícone nenhum: nada declara favicon no head, e o arquivo que existe em public/ não é a marca do Arq3D.\n\nCada prancha mostra a marca grande, depois em 64/32/16 no tamanho real — é aos 16 px que a decisão se ganha ou se perde."
     },
     {
       "id": "recomendacao",
