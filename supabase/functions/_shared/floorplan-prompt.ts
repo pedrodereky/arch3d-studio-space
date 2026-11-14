@@ -4,19 +4,10 @@
 export type Tipologia = "casa_terrea" | "sobrado" | "apartamento";
 
 export type EstiloArquitetonico =
-  | "minimalista_moderno"
-  | "industrial"
-  | "escandinavo"
-  | "neoclassico"
-  | "contemporaneo_brasileiro";
+  "minimalista_moderno" | "industrial" | "escandinavo" | "neoclassico" | "contemporaneo_brasileiro";
 
 export type ExtraId =
-  | "varanda_gourmet"
-  | "escritorio"
-  | "lavabo"
-  | "area_servico"
-  | "closet"
-  | "despensa";
+  "varanda_gourmet" | "escritorio" | "lavabo" | "area_servico" | "closet" | "despensa";
 
 const TIPOLOGIA_LABEL: Record<Tipologia, string> = {
   casa_terrea: "single-story house",

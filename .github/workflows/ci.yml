@@ -21,12 +21,12 @@ jobs:
           node-version: "22"
           cache: npm
 
-      # `npm ci` exigiria um package-lock.json em dia com o package.json, e o
-      # versionado está defasado (não lista @supabase/supabase-js, @xyflow/react
-      # e outras dependências que o app importa). `bun install --frozen-lockfile`
-      # também não serve aqui: o bun.lockb fixa parte dos pacotes no registry
-      # privado da Lovable, que um runner público não acessa (403).
-      # Ver a nota sobre lockfiles no README antes de trocar isto.
+      # O package-lock.json fixa as versões que a CI valida. Sem ele, o
+      # npm install resolvia versões novas a cada execução e quebrou quando o
+      # @tanstack/react-start passou a exigir o Vite 8. `npm install` (e não
+      # `npm ci`) porque o lockfile gerado no macOS não lista os binários
+      # opcionais de Linux de workerd/sharp; o npm completa só esses, sem mudar
+      # as versões travadas. O bun.lockb continua sendo o da Lovable.
       - name: Instalar dependências
         run: npm install --no-audit --no-fund
 
