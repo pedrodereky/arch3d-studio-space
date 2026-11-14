@@ -1,7 +1,5 @@
 # Mockups — direções de layout
 
-Canvas publicado: https://claude.ai/code/artifact/bce31899-8d79-4b19-90b3-d6760e9c7e52
-
 Arquivos-fonte das telas de proposta do Arq3D Studio. Cada `.dc.html` é uma
 prancha; `canvas.json` define a disposição delas no canvas.
 
