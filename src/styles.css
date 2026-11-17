@@ -1,6 +1,8 @@
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
+@import "@fontsource-variable/mulish/wght.css";
+@import "@fontsource-variable/mulish/wght-italic.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -10,42 +12,8 @@
    (`--background`, `--primary`, etc.) are mapped to brand primitives.
    ====================================================================== */
 
-/* Avenir LT Std — local OTFs served from /public/fonts */
-@font-face {
-  font-family: "Avenir LT Std";
-  src: url("/fonts/AvenirLTStd-Light__1_.otf") format("opentype");
-  font-weight: 300;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: "Avenir LT Std";
-  src: url("/fonts/AvenirLTStd-LightOblique__1_.otf") format("opentype");
-  font-weight: 300;
-  font-style: italic;
-  font-display: swap;
-}
-@font-face {
-  font-family: "Avenir LT Std";
-  src: url("/fonts/AvenirLTStd-Roman__1_.otf") format("opentype");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: "Avenir LT Std";
-  src: url("/fonts/AvenirLTStd-Oblique__1_.otf") format("opentype");
-  font-weight: 400;
-  font-style: italic;
-  font-display: swap;
-}
-@font-face {
-  font-family: "Avenir LT Std";
-  src: url("/fonts/AvenirLTStd-Heavy__1_.otf") format("opentype");
-  font-weight: 700 900;
-  font-style: normal;
-  font-display: swap;
-}
+/* Mulish (SIL Open Font License), auto-hospedada via @fontsource-variable/mulish.
+   Substituta métrica do Avenir: mesma proporção, sem licença comercial. */
 
 @theme inline {
   --font-sans: var(--via-font);
@@ -134,7 +102,7 @@
   --via-util-5: #5b3fa0;
   --via-util-6: #0f7a8c;
 
-  --via-font: "Avenir LT Std", "Avenir Next", Avenir, "Helvetica Neue", sans-serif;
+  --via-font: "Mulish Variable", "Avenir Next", Avenir, "Helvetica Neue", sans-serif;
   --via-font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
 
   --via-fw-light: 300;
